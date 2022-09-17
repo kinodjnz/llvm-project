@@ -36,7 +36,7 @@ class CrampSubtarget : public CrampGenSubtargetInfo {
 public:
   enum CrampProcFamilyEnum : uint8_t {
     Others,
-    SiFive7,
+    //SiFive7,
   };
 
 private:

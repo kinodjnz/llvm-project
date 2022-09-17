@@ -317,6 +317,7 @@ enum {
   EM_RISCV = 243,         // RISC-V
   EM_LANAI = 244,         // Lanai 32-bit processor
   EM_BPF = 247,           // Linux kernel bpf virtual machine
+  EM_CRAMP = 249,         // Cramp
   EM_VE = 251,            // NEC SX-Aurora VE
   EM_CSKY = 252,          // C-SKY 32-bit processor
   EM_LOONGARCH = 258,     // LoongArch
@@ -681,6 +682,29 @@ enum {
   STO_RISCV_VARIANT_CC = 0x80
 };
 
+// Cramp Specific e_flags
+enum : unsigned {
+  EF_CRAMP_RVC = 0x0001,
+  EF_CRAMP_FLOAT_ABI = 0x0006,
+  EF_CRAMP_FLOAT_ABI_SOFT = 0x0000,
+  EF_CRAMP_FLOAT_ABI_SINGLE = 0x0002,
+  EF_CRAMP_FLOAT_ABI_DOUBLE = 0x0004,
+  EF_CRAMP_FLOAT_ABI_QUAD = 0x0006,
+  EF_CRAMP_RVE = 0x0008,
+  EF_CRAMP_TSO = 0x0010,
+};
+
+// ELF Relocation types for RISC-V
+enum {
+#include "ELFRelocs/Cramp.def"
+};
+
+enum {
+  // Symbol may follow different calling convention than the standard calling
+  // convention.
+  STO_CRAMP_VARIANT_CC = 0x80
+};
+
 // ELF Relocation types for S390/zSeries
 enum {
 #include "ELFRelocs/SystemZ.def"
@@ -1042,6 +1066,7 @@ enum : unsigned {
   SHT_MSP430_ATTRIBUTES = 0x70000003U,
 
   SHT_RISCV_ATTRIBUTES = 0x70000003U,
+  SHT_CRAMP_ATTRIBUTES = 0x70000003U,
 
   SHT_CSKY_ATTRIBUTES = 0x70000001U,
 

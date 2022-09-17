@@ -34,9 +34,9 @@ Optional<MCFixupKind> CrampAsmBackend::getFixupKind(StringRef Name) const {
 #define ELF_RELOC(X, Y) .Case(#X, Y)
 #include "llvm/BinaryFormat/ELFRelocs/Cramp.def"
 #undef ELF_RELOC
-               .Case("BFD_RELOC_NONE", ELF::R_Cramp_NONE)
-               .Case("BFD_RELOC_32", ELF::R_Cramp_32)
-               .Case("BFD_RELOC_64", ELF::R_Cramp_64)
+               .Case("BFD_RELOC_NONE", ELF::R_CRAMP_NONE)
+               .Case("BFD_RELOC_32", ELF::R_CRAMP_32)
+               .Case("BFD_RELOC_64", ELF::R_CRAMP_64)
                .Default(-1u);
     if (Type != -1u)
       return static_cast<MCFixupKind>(FirstLiteralRelocationKind + Type);
@@ -97,7 +97,7 @@ CrampAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
   static_assert((array_lengthof(Infos)) == Cramp::NumTargetFixupKinds,
                 "Not all fixup kinds added to Infos array");
 
-  // Fixup kinds from .reloc directive are like R_Cramp_NONE. They
+  // Fixup kinds from .reloc directive are like R_CRAMP_NONE. They
   // do not require any extra processing.
   if (Kind >= FirstLiteralRelocationKind)
     return MCAsmBackend::getFixupKindInfo(FK_NONE);
@@ -598,11 +598,11 @@ bool CrampAsmBackend::shouldInsertExtraNopBytesForCodeAlign(
   }
 }
 
-// We need to insert R_Cramp_ALIGN relocation type to indicate the
+// We need to insert R_CRAMP_ALIGN relocation type to indicate the
 // position of Nops and the total bytes of the Nops have been inserted
 // when linker relaxation enabled.
 // The function insert fixup_cramp_align fixup which eventually will
-// transfer to R_Cramp_ALIGN relocation type.
+// transfer to R_CRAMP_ALIGN relocation type.
 bool CrampAsmBackend::shouldInsertFixupForCodeAlign(MCAssembler &Asm,
                                                     const MCAsmLayout &Layout,
                                                     MCAlignFragment &AF) {

@@ -79,7 +79,7 @@ createCrampMCObjectFileInfo(MCContext &Ctx, bool PIC,
 static MCSubtargetInfo *createCrampMCSubtargetInfo(const Triple &TT,
                                                    StringRef CPU, StringRef FS) {
   if (CPU.empty() || CPU == "generic")
-    CPU = TT.isArch64Bit() ? "generic-rv64" : "generic-cramp32";
+    CPU = TT.isArch64Bit() ? "generic-cramp64" : "generic-cramp32";
 
   return createCrampMCSubtargetInfoImpl(TT, CPU, /*TuneCPU*/ CPU, FS);
 }

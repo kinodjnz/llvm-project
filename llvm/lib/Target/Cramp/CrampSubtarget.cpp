@@ -71,7 +71,7 @@ CrampSubtarget::initializeSubtargetDependencies(const Triple &TT, StringRef CPU,
   // Determine default and user-specified characteristics
   bool Is64Bit = TT.isArch64Bit();
   if (CPU.empty() || CPU == "generic")
-    CPU = Is64Bit ? "generic-rv64" : "generic-cramp32";
+    CPU = Is64Bit ? "generic-cramp64" : "generic-cramp32";
 
   if (TuneCPU.empty())
     TuneCPU = CPU;

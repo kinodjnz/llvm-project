@@ -75,6 +75,7 @@ public:
     riscv32,        // RISC-V (32-bit): riscv32
     riscv64,        // RISC-V (64-bit): riscv64
     cramp32,        // Cramp (32-bit): cramp32
+    cramp64,        // Cramp (64-bit): cramp64
     sparc,          // Sparc: sparc
     sparcv9,        // Sparcv9: Sparcv9
     sparcel,        // Sparc: (endianness = little). NB: 'Sparcle' is a CPU variant
@@ -867,7 +868,7 @@ public:
 
   /// Tests whether the target is 32-bit Cramp.
   bool isCramp() const {
-    return getArch() == Triple::cramp32;
+    return getArch() == Triple::cramp32 || getArch() == Triple::cramp64;
   }
 
   /// Tests whether the target is 32-bit SPARC (little and big endian).

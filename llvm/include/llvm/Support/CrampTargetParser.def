@@ -1,0 +1,17 @@
+#ifndef PROC_ALIAS
+#define PROC_ALIAS(NAME, RV32, RV64)
+#endif
+
+PROC_ALIAS("generic", "generic-cramp32", "generic-cramp64")
+
+#undef PROC_ALIAS
+
+#ifndef PROC
+#define PROC(ENUM, NAME, FEATURES, DEFAULT_MARCH)
+#endif
+
+PROC(INVALID, {"invalid"}, FK_INVALID, {""})
+PROC(GENERIC_RV32, {"generic-cramp32"}, FK_NONE, {""})
+PROC(GENERIC_RV64, {"generic-cramp64"}, FK_64BIT, {""})
+
+#undef PROC

@@ -477,10 +477,6 @@ def TuneNoDefaultUnroll
     : SubtargetFeature<"no-default-unroll", "EnableDefaultUnroll", "false",
                        "Disable default unroll preference.">;
 
-def TuneSiFive7 : SubtargetFeature<"sifive7", "CrampProcFamily", "SiFive7",
-                                   "SiFive 7-Series processors",
-                                   [TuneNoDefaultUnroll]>;
-
 //===----------------------------------------------------------------------===//
 // Named operands for CSR instructions.
 //===----------------------------------------------------------------------===//
@@ -496,93 +492,18 @@ include "CrampRegisterInfo.td"
 include "CrampCallingConv.td"
 include "CrampInstrInfo.td"
 include "CrampRegisterBanks.td"
-include "CrampSchedRocket.td"
-include "CrampSchedSiFive7.td"
+//include "CrampSchedRocket.td"
+//include "CrampSchedSiFive7.td"
 
 //===----------------------------------------------------------------------===//
 // RISC-V processors supported.
 //===----------------------------------------------------------------------===//
 
 def : ProcessorModel<"generic-cramp32", NoSchedModel, []>;
-def : ProcessorModel<"generic-rv64", NoSchedModel, [Feature64Bit]>;
+def : ProcessorModel<"generic-cramp64", NoSchedModel, [Feature64Bit]>;
 // Support generic for compatibility with other targets. The triple will be used
 // to change to the appropriate rv32/rv64 version.
 def : ProcessorModel<"generic", NoSchedModel, []>;
-
-def : ProcessorModel<"rocket-rv32", RocketModel, []>;
-def : ProcessorModel<"rocket-rv64", RocketModel, [Feature64Bit]>;
-
-def : ProcessorModel<"sifive-7-rv32", SiFive7Model, [],
-                     [TuneSiFive7]>;
-def : ProcessorModel<"sifive-7-rv64", SiFive7Model, [Feature64Bit],
-                     [TuneSiFive7]>;
-
-def : ProcessorModel<"sifive-e20", RocketModel, [FeatureStdExtM,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-e21", RocketModel, [FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-e24", RocketModel, [FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtF,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-e31", RocketModel, [FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-e34", RocketModel, [FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtF,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-e76", SiFive7Model, [FeatureStdExtM,
-                                                  FeatureStdExtA,
-                                                  FeatureStdExtF,
-                                                  FeatureStdExtC],
-                     [TuneSiFive7]>;
-
-def : ProcessorModel<"sifive-s21", RocketModel, [Feature64Bit,
-                                                 FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-s51", RocketModel, [Feature64Bit,
-                                                 FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-s54", RocketModel, [Feature64Bit,
-                                                 FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtF,
-                                                 FeatureStdExtD,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-s76", SiFive7Model, [Feature64Bit,
-                                                  FeatureStdExtM,
-                                                  FeatureStdExtA,
-                                                  FeatureStdExtF,
-                                                  FeatureStdExtD,
-                                                  FeatureStdExtC],
-                     [TuneSiFive7]>;
-
-def : ProcessorModel<"sifive-u54", RocketModel, [Feature64Bit,
-                                                 FeatureStdExtM,
-                                                 FeatureStdExtA,
-                                                 FeatureStdExtF,
-                                                 FeatureStdExtD,
-                                                 FeatureStdExtC]>;
-
-def : ProcessorModel<"sifive-u74", SiFive7Model, [Feature64Bit,
-                                                  FeatureStdExtM,
-                                                  FeatureStdExtA,
-                                                  FeatureStdExtF,
-                                                  FeatureStdExtD,
-                                                  FeatureStdExtC],
-                     [TuneSiFive7]>;
 
 //===----------------------------------------------------------------------===//
 // Define the RISC-V target.

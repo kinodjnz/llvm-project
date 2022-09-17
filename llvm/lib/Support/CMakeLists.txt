@@ -199,6 +199,9 @@ add_llvm_component_library(LLVMSupport
   RISCVAttributes.cpp
   RISCVAttributeParser.cpp
   RISCVISAInfo.cpp
+  CrampAttributes.cpp
+  CrampAttributeParser.cpp
+  CrampISAInfo.cpp
   ScaledNumber.cpp
   ScopedPrinter.cpp
   SHA1.cpp

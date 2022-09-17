@@ -40,7 +40,7 @@ protected:
 }
 
 CrampELFObjectWriter::CrampELFObjectWriter(uint8_t OSABI, bool Is64Bit)
-    : MCELFObjectTargetWriter(Is64Bit, OSABI, ELF::EM_Cramp,
+    : MCELFObjectTargetWriter(Is64Bit, OSABI, ELF::EM_CRAMP,
                               /*HasRelocationAddend*/ true) {}
 
 CrampELFObjectWriter::~CrampELFObjectWriter() = default;
@@ -58,114 +58,114 @@ unsigned CrampELFObjectWriter::getRelocType(MCContext &Ctx,
     switch (Kind) {
     default:
       Ctx.reportError(Fixup.getLoc(), "Unsupported relocation type");
-      return ELF::R_Cramp_NONE;
+      return ELF::R_CRAMP_NONE;
     case FK_Data_4:
     case FK_PCRel_4:
-      return ELF::R_Cramp_32_PCREL;
+      return ELF::R_CRAMP_32_PCREL;
     case Cramp::fixup_cramp_pcrel_hi20:
-      return ELF::R_Cramp_PCREL_HI20;
+      return ELF::R_CRAMP_PCREL_HI20;
     case Cramp::fixup_cramp_pcrel_lo12_i:
-      return ELF::R_Cramp_PCREL_LO12_I;
+      return ELF::R_CRAMP_PCREL_LO12_I;
     case Cramp::fixup_cramp_pcrel_lo12_s:
-      return ELF::R_Cramp_PCREL_LO12_S;
+      return ELF::R_CRAMP_PCREL_LO12_S;
     case Cramp::fixup_cramp_got_hi20:
-      return ELF::R_Cramp_GOT_HI20;
+      return ELF::R_CRAMP_GOT_HI20;
     case Cramp::fixup_cramp_tls_got_hi20:
-      return ELF::R_Cramp_TLS_GOT_HI20;
+      return ELF::R_CRAMP_TLS_GOT_HI20;
     case Cramp::fixup_cramp_tls_gd_hi20:
-      return ELF::R_Cramp_TLS_GD_HI20;
+      return ELF::R_CRAMP_TLS_GD_HI20;
     case Cramp::fixup_cramp_jal:
-      return ELF::R_Cramp_JAL;
+      return ELF::R_CRAMP_JAL;
     case Cramp::fixup_cramp_branch:
-      return ELF::R_Cramp_BRANCH;
+      return ELF::R_CRAMP_BRANCH;
     case Cramp::fixup_cramp_rvc_jump:
-      return ELF::R_Cramp_RVC_JUMP;
+      return ELF::R_CRAMP_RVC_JUMP;
     case Cramp::fixup_cramp_rvc_branch:
-      return ELF::R_Cramp_RVC_BRANCH;
+      return ELF::R_CRAMP_RVC_BRANCH;
     case Cramp::fixup_cramp_call:
-      return ELF::R_Cramp_CALL;
+      return ELF::R_CRAMP_CALL;
     case Cramp::fixup_cramp_call_plt:
-      return ELF::R_Cramp_CALL_PLT;
+      return ELF::R_CRAMP_CALL_PLT;
     case Cramp::fixup_cramp_add_8:
-      return ELF::R_Cramp_ADD8;
+      return ELF::R_CRAMP_ADD8;
     case Cramp::fixup_cramp_sub_8:
-      return ELF::R_Cramp_SUB8;
+      return ELF::R_CRAMP_SUB8;
     case Cramp::fixup_cramp_add_16:
-      return ELF::R_Cramp_ADD16;
+      return ELF::R_CRAMP_ADD16;
     case Cramp::fixup_cramp_sub_16:
-      return ELF::R_Cramp_SUB16;
+      return ELF::R_CRAMP_SUB16;
     case Cramp::fixup_cramp_add_32:
-      return ELF::R_Cramp_ADD32;
+      return ELF::R_CRAMP_ADD32;
     case Cramp::fixup_cramp_sub_32:
-      return ELF::R_Cramp_SUB32;
+      return ELF::R_CRAMP_SUB32;
     case Cramp::fixup_cramp_add_64:
-      return ELF::R_Cramp_ADD64;
+      return ELF::R_CRAMP_ADD64;
     case Cramp::fixup_cramp_sub_64:
-      return ELF::R_Cramp_SUB64;
+      return ELF::R_CRAMP_SUB64;
     }
   }
 
   switch (Kind) {
   default:
     Ctx.reportError(Fixup.getLoc(), "Unsupported relocation type");
-    return ELF::R_Cramp_NONE;
+    return ELF::R_CRAMP_NONE;
   case FK_Data_1:
     Ctx.reportError(Fixup.getLoc(), "1-byte data relocations not supported");
-    return ELF::R_Cramp_NONE;
+    return ELF::R_CRAMP_NONE;
   case FK_Data_2:
     Ctx.reportError(Fixup.getLoc(), "2-byte data relocations not supported");
-    return ELF::R_Cramp_NONE;
+    return ELF::R_CRAMP_NONE;
   case FK_Data_4:
     if (Expr->getKind() == MCExpr::Target &&
         cast<CrampMCExpr>(Expr)->getKind() == CrampMCExpr::VK_Cramp_32_PCREL)
-      return ELF::R_Cramp_32_PCREL;
-    return ELF::R_Cramp_32;
+      return ELF::R_CRAMP_32_PCREL;
+    return ELF::R_CRAMP_32;
   case FK_Data_8:
-    return ELF::R_Cramp_64;
+    return ELF::R_CRAMP_64;
   case Cramp::fixup_cramp_hi20:
-    return ELF::R_Cramp_HI20;
+    return ELF::R_CRAMP_HI20;
   case Cramp::fixup_cramp_lo12_i:
-    return ELF::R_Cramp_LO12_I;
+    return ELF::R_CRAMP_LO12_I;
   case Cramp::fixup_cramp_lo12_s:
-    return ELF::R_Cramp_LO12_S;
+    return ELF::R_CRAMP_LO12_S;
   case Cramp::fixup_cramp_tprel_hi20:
-    return ELF::R_Cramp_TPREL_HI20;
+    return ELF::R_CRAMP_TPREL_HI20;
   case Cramp::fixup_cramp_tprel_lo12_i:
-    return ELF::R_Cramp_TPREL_LO12_I;
+    return ELF::R_CRAMP_TPREL_LO12_I;
   case Cramp::fixup_cramp_tprel_lo12_s:
-    return ELF::R_Cramp_TPREL_LO12_S;
+    return ELF::R_CRAMP_TPREL_LO12_S;
   case Cramp::fixup_cramp_tprel_add:
-    return ELF::R_Cramp_TPREL_ADD;
+    return ELF::R_CRAMP_TPREL_ADD;
   case Cramp::fixup_cramp_relax:
-    return ELF::R_Cramp_RELAX;
+    return ELF::R_CRAMP_RELAX;
   case Cramp::fixup_cramp_align:
-    return ELF::R_Cramp_ALIGN;
+    return ELF::R_CRAMP_ALIGN;
   case Cramp::fixup_cramp_set_6b:
-    return ELF::R_Cramp_SET6;
+    return ELF::R_CRAMP_SET6;
   case Cramp::fixup_cramp_sub_6b:
-    return ELF::R_Cramp_SUB6;
+    return ELF::R_CRAMP_SUB6;
   case Cramp::fixup_cramp_add_8:
-    return ELF::R_Cramp_ADD8;
+    return ELF::R_CRAMP_ADD8;
   case Cramp::fixup_cramp_set_8:
-    return ELF::R_Cramp_SET8;
+    return ELF::R_CRAMP_SET8;
   case Cramp::fixup_cramp_sub_8:
-    return ELF::R_Cramp_SUB8;
+    return ELF::R_CRAMP_SUB8;
   case Cramp::fixup_cramp_set_16:
-    return ELF::R_Cramp_SET16;
+    return ELF::R_CRAMP_SET16;
   case Cramp::fixup_cramp_add_16:
-    return ELF::R_Cramp_ADD16;
+    return ELF::R_CRAMP_ADD16;
   case Cramp::fixup_cramp_sub_16:
-    return ELF::R_Cramp_SUB16;
+    return ELF::R_CRAMP_SUB16;
   case Cramp::fixup_cramp_set_32:
-    return ELF::R_Cramp_SET32;
+    return ELF::R_CRAMP_SET32;
   case Cramp::fixup_cramp_add_32:
-    return ELF::R_Cramp_ADD32;
+    return ELF::R_CRAMP_ADD32;
   case Cramp::fixup_cramp_sub_32:
-    return ELF::R_Cramp_SUB32;
+    return ELF::R_CRAMP_SUB32;
   case Cramp::fixup_cramp_add_64:
-    return ELF::R_Cramp_ADD64;
+    return ELF::R_CRAMP_ADD64;
   case Cramp::fixup_cramp_sub_64:
-    return ELF::R_Cramp_SUB64;
+    return ELF::R_CRAMP_SUB64;
   }
 }
 

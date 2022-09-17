@@ -77,7 +77,7 @@ void CrampTargetELFStreamer::finishAttributeSection() {
   } else {
     MCAssembler &MCA = getStreamer().getAssembler();
     AttributeSection = MCA.getContext().getELFSection(
-        ".cramp.attributes", ELF::SHT_Cramp_ATTRIBUTES, 0);
+        ".cramp.attributes", ELF::SHT_CRAMP_ATTRIBUTES, 0);
     Streamer.switchSection(AttributeSection);
 
     Streamer.emitInt8(ELFAttrs::Format_Version);
@@ -156,7 +156,7 @@ void CrampTargetELFStreamer::finish() {
   unsigned EFlags = MCA.getELFHeaderEFlags();
 
   if (Features[Cramp::FeatureStdExtC])
-    EFlags |= ELF::EF_Cramp_RVC;
+    EFlags |= ELF::EF_CRAMP_RVC;
 
   switch (ABI) {
   case CrampABI::ABI_ILP32:
@@ -164,14 +164,14 @@ void CrampTargetELFStreamer::finish() {
     break;
   case CrampABI::ABI_ILP32F:
   case CrampABI::ABI_LP64F:
-    EFlags |= ELF::EF_Cramp_FLOAT_ABI_SINGLE;
+    EFlags |= ELF::EF_CRAMP_FLOAT_ABI_SINGLE;
     break;
   case CrampABI::ABI_ILP32D:
   case CrampABI::ABI_LP64D:
-    EFlags |= ELF::EF_Cramp_FLOAT_ABI_DOUBLE;
+    EFlags |= ELF::EF_CRAMP_FLOAT_ABI_DOUBLE;
     break;
   case CrampABI::ABI_ILP32E:
-    EFlags |= ELF::EF_Cramp_RVE;
+    EFlags |= ELF::EF_CRAMP_RVE;
     break;
   case CrampABI::ABI_Unknown:
     llvm_unreachable("Improperly initialised target ABI");

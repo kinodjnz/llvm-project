@@ -26,44 +26,44 @@
 let TargetPrefix = "cramp" in {
 
   // T @llvm.<name>.T.<p>(any*, T, T, T imm);
-  class MaskedAtomicRMWFourArg<LLVMType itype>
+  class CrampMaskedAtomicRMWFourArg<LLVMType itype>
       : Intrinsic<[itype], [llvm_anyptr_ty, itype, itype, itype],
                   [IntrArgMemOnly, NoCapture<ArgIndex<0>>, ImmArg<ArgIndex<3>>]>;
   // T @llvm.<name>.T.<p>(any*, T, T, T, T imm);
-  class MaskedAtomicRMWFiveArg<LLVMType itype>
+  class CrampMaskedAtomicRMWFiveArg<LLVMType itype>
       : Intrinsic<[itype], [llvm_anyptr_ty, itype, itype, itype, itype],
                   [IntrArgMemOnly, NoCapture<ArgIndex<0>>, ImmArg<ArgIndex<4>>]>;
 
   // We define 32-bit and 64-bit variants of the above, where T stands for i32
   // or i64 respectively:
-  multiclass MaskedAtomicRMWFourArgIntrinsics {
+  multiclass CrampMaskedAtomicRMWFourArgIntrinsics {
     // i32 @llvm.<name>.i32.<p>(any*, i32, i32, i32 imm);
-    def _i32 : MaskedAtomicRMWFourArg<llvm_i32_ty>;
+    def _i32 : CrampMaskedAtomicRMWFourArg<llvm_i32_ty>;
     // i64 @llvm.<name>.i32.<p>(any*, i64, i64, i64 imm);
-    def _i64 : MaskedAtomicRMWFourArg<llvm_i64_ty>;
+    def _i64 : CrampMaskedAtomicRMWFourArg<llvm_i64_ty>;
   }
 
-  multiclass MaskedAtomicRMWFiveArgIntrinsics {
+  multiclass CrampMaskedAtomicRMWFiveArgIntrinsics {
     // i32 @llvm.<name>.i32.<p>(any*, i32, i32, i32, i32 imm);
-    def _i32 : MaskedAtomicRMWFiveArg<llvm_i32_ty>;
+    def _i32 : CrampMaskedAtomicRMWFiveArg<llvm_i32_ty>;
     // i64 @llvm.<name>.i64.<p>(any*, i64, i64, i64, i64 imm);
-    def _i64 : MaskedAtomicRMWFiveArg<llvm_i64_ty>;
+    def _i64 : CrampMaskedAtomicRMWFiveArg<llvm_i64_ty>;
   }
 
   // @llvm.cramp.masked.atomicrmw.*.{i32,i64}.<p>(...)
-  defm int_cramp_masked_atomicrmw_xchg : MaskedAtomicRMWFourArgIntrinsics;
-  defm int_cramp_masked_atomicrmw_add : MaskedAtomicRMWFourArgIntrinsics;
-  defm int_cramp_masked_atomicrmw_sub : MaskedAtomicRMWFourArgIntrinsics;
-  defm int_cramp_masked_atomicrmw_nand : MaskedAtomicRMWFourArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_xchg : CrampMaskedAtomicRMWFourArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_add : CrampMaskedAtomicRMWFourArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_sub : CrampMaskedAtomicRMWFourArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_nand : CrampMaskedAtomicRMWFourArgIntrinsics;
   // Signed min and max need an extra operand to do sign extension with.
-  defm int_cramp_masked_atomicrmw_max : MaskedAtomicRMWFiveArgIntrinsics;
-  defm int_cramp_masked_atomicrmw_min : MaskedAtomicRMWFiveArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_max : CrampMaskedAtomicRMWFiveArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_min : CrampMaskedAtomicRMWFiveArgIntrinsics;
   // Unsigned min and max don't need the extra operand.
-  defm int_cramp_masked_atomicrmw_umax : MaskedAtomicRMWFourArgIntrinsics;
-  defm int_cramp_masked_atomicrmw_umin : MaskedAtomicRMWFourArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_umax : CrampMaskedAtomicRMWFourArgIntrinsics;
+  defm int_cramp_masked_atomicrmw_umin : CrampMaskedAtomicRMWFourArgIntrinsics;
 
   // @llvm.cramp.masked.cmpxchg.{i32,i64}.<p>(...)
-  defm int_cramp_masked_cmpxchg : MaskedAtomicRMWFiveArgIntrinsics;
+  defm int_cramp_masked_cmpxchg : CrampMaskedAtomicRMWFiveArgIntrinsics;
 
 } // TargetPrefix = "cramp"
 
@@ -72,86 +72,86 @@ let TargetPrefix = "cramp" in {
 
 let TargetPrefix = "cramp" in {
 
-  class BitManipGPRIntrinsics
+  class CrampBitManipGPRIntrinsics
       : Intrinsic<[llvm_any_ty],
                   [LLVMMatchType<0>],
                   [IntrNoMem, IntrSpeculatable, IntrWillReturn]>;
-  class BitManipGPRGPRIntrinsics
+  class CrampBitManipGPRGPRIntrinsics
       : Intrinsic<[llvm_any_ty],
                   [LLVMMatchType<0>, LLVMMatchType<0>],
                   [IntrNoMem, IntrSpeculatable, IntrWillReturn]>;
-  class BitManipGPRGPRGRIntrinsics
+  class CrampBitManipGPRGPRGRIntrinsics
       : Intrinsic<[llvm_any_ty],
                   [LLVMMatchType<0>, LLVMMatchType<0>, LLVMMatchType<0>],
                   [IntrNoMem, IntrSpeculatable, IntrWillReturn]>;
 
   // Zbb
-  def int_cramp_orc_b : BitManipGPRIntrinsics;
+  def int_cramp_orc_b : CrampBitManipGPRIntrinsics;
 
   // Zbc or Zbkc
-  def int_cramp_clmul  : BitManipGPRGPRIntrinsics;
-  def int_cramp_clmulh : BitManipGPRGPRIntrinsics;
+  def int_cramp_clmul  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_clmulh : CrampBitManipGPRGPRIntrinsics;
 
   // Zbc
-  def int_cramp_clmulr : BitManipGPRGPRIntrinsics;
+  def int_cramp_clmulr : CrampBitManipGPRGPRIntrinsics;
 
   // Zbe
-  def int_cramp_bcompress   : BitManipGPRGPRIntrinsics;
-  def int_cramp_bdecompress : BitManipGPRGPRIntrinsics;
+  def int_cramp_bcompress   : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_bdecompress : CrampBitManipGPRGPRIntrinsics;
 
   // Zbf
-  def int_cramp_bfp  : BitManipGPRGPRIntrinsics;
+  def int_cramp_bfp  : CrampBitManipGPRGPRIntrinsics;
 
   // Zbp
-  def int_cramp_grev  : BitManipGPRGPRIntrinsics;
-  def int_cramp_gorc  : BitManipGPRGPRIntrinsics;
-  def int_cramp_shfl  : BitManipGPRGPRIntrinsics;
-  def int_cramp_unshfl  : BitManipGPRGPRIntrinsics;
-  def int_cramp_xperm_n  : BitManipGPRGPRIntrinsics;
-  def int_cramp_xperm_b  : BitManipGPRGPRIntrinsics;
-  def int_cramp_xperm_h  : BitManipGPRGPRIntrinsics;
-  def int_cramp_xperm_w  : BitManipGPRGPRIntrinsics;
+  def int_cramp_grev  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_gorc  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_shfl  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_unshfl  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_xperm_n  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_xperm_b  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_xperm_h  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_xperm_w  : CrampBitManipGPRGPRIntrinsics;
 
   // Zbr
-  def int_cramp_crc32_b : BitManipGPRIntrinsics;
-  def int_cramp_crc32_h : BitManipGPRIntrinsics;
-  def int_cramp_crc32_w : BitManipGPRIntrinsics;
-  def int_cramp_crc32_d : BitManipGPRIntrinsics;
-  def int_cramp_crc32c_b : BitManipGPRIntrinsics;
-  def int_cramp_crc32c_h : BitManipGPRIntrinsics;
-  def int_cramp_crc32c_w : BitManipGPRIntrinsics;
-  def int_cramp_crc32c_d : BitManipGPRIntrinsics;
+  def int_cramp_crc32_b : CrampBitManipGPRIntrinsics;
+  def int_cramp_crc32_h : CrampBitManipGPRIntrinsics;
+  def int_cramp_crc32_w : CrampBitManipGPRIntrinsics;
+  def int_cramp_crc32_d : CrampBitManipGPRIntrinsics;
+  def int_cramp_crc32c_b : CrampBitManipGPRIntrinsics;
+  def int_cramp_crc32c_h : CrampBitManipGPRIntrinsics;
+  def int_cramp_crc32c_w : CrampBitManipGPRIntrinsics;
+  def int_cramp_crc32c_d : CrampBitManipGPRIntrinsics;
 
   // Zbt
-  def int_cramp_fsl : BitManipGPRGPRGRIntrinsics;
-  def int_cramp_fsr : BitManipGPRGPRGRIntrinsics;
+  def int_cramp_fsl : CrampBitManipGPRGPRGRIntrinsics;
+  def int_cramp_fsr : CrampBitManipGPRGPRGRIntrinsics;
 
   // Zbkb
-  def int_cramp_brev8 : BitManipGPRIntrinsics;
-  def int_cramp_zip   : BitManipGPRIntrinsics;
-  def int_cramp_unzip : BitManipGPRIntrinsics;
+  def int_cramp_brev8 : CrampBitManipGPRIntrinsics;
+  def int_cramp_zip   : CrampBitManipGPRIntrinsics;
+  def int_cramp_unzip : CrampBitManipGPRIntrinsics;
 
   // Zbkx
-  def int_cramp_xperm4  : BitManipGPRGPRIntrinsics;
-  def int_cramp_xperm8  : BitManipGPRGPRIntrinsics;
+  def int_cramp_xperm4  : CrampBitManipGPRGPRIntrinsics;
+  def int_cramp_xperm8  : CrampBitManipGPRGPRIntrinsics;
 } // TargetPrefix = "cramp"
 
 //===----------------------------------------------------------------------===//
 // Vectors
 
 // The intrinsic does not have any operand that must be extended.
-defvar NoScalarOperand = 0xF;
+defvar CrampNoScalarOperand = 0xF;
 
 // The intrinsic does not have a VL operand.
 // (e.g., cramp_vmv_x_s and cramp_vfmv_f_s)
-defvar NoVLOperand = 0x1F;
+defvar CrampNoVLOperand = 0x1F;
 
 class CrampVIntrinsic {
   // These intrinsics may accept illegal integer values in their llvm_any_ty
   // operand, so they have to be extended.
   Intrinsic IntrinsicID = !cast<Intrinsic>(NAME);
-  bits<4> ScalarOperand = NoScalarOperand;
-  bits<5> VLOperand = NoVLOperand;
+  bits<4> ScalarOperand = CrampNoScalarOperand;
+  bits<5> VLOperand = CrampNoVLOperand;
 }
 
 let TargetPrefix = "cramp" in {
@@ -673,7 +673,7 @@ let TargetPrefix = "cramp" in {
     let VLOperand = 4;
   }
   // Input: (vector_in, vector_in, scalar_in, vl, policy)
-  class RVVSlideUnMasked
+  class CrampRVVSlideUnMasked
         : Intrinsic<[llvm_anyvector_ty],
                     [LLVMMatchType<0>, LLVMMatchType<0>, llvm_anyint_ty,
                      LLVMMatchType<1>, LLVMMatchType<1>],
@@ -681,7 +681,7 @@ let TargetPrefix = "cramp" in {
     let VLOperand = 3;
   }
   // Input: (vector_in, vector_in, vector_in/scalar_in, mask, vl, policy)
-  class RVVSlideMasked
+  class CrampRVVSlideMasked
         : Intrinsic<[llvm_anyvector_ty],
                     [LLVMMatchType<0>, LLVMMatchType<0>, llvm_anyint_ty,
                      LLVMScalarOrSameVectorWidth<0, llvm_i1_ty>,
@@ -1110,9 +1110,9 @@ let TargetPrefix = "cramp" in {
     def "int_cramp_" # NAME : CrampSaturatingBinaryABShiftUnMasked;
     def "int_cramp_" # NAME # "_mask" : CrampSaturatingBinaryABShiftMasked;
   }
-  multiclass RVVSlide {
-    def "int_cramp_" # NAME : RVVSlideUnMasked;
-    def "int_cramp_" # NAME # "_mask" : RVVSlideMasked;
+  multiclass CrampRVVSlide {
+    def "int_cramp_" # NAME : CrampRVVSlideUnMasked;
+    def "int_cramp_" # NAME # "_mask" : CrampRVVSlideMasked;
   }
   multiclass CrampTernaryAAXA {
     def "int_cramp_" # NAME : CrampTernaryAAXAUnMasked;
@@ -1359,8 +1359,8 @@ let TargetPrefix = "cramp" in {
 
   defm vfmerge : CrampBinaryWithV0;
 
-  defm vslideup : RVVSlide;
-  defm vslidedown : RVVSlide;
+  defm vslideup : CrampRVVSlide;
+  defm vslidedown : CrampRVVSlide;
 
   defm vslide1up : CrampBinaryAAX;
   defm vslide1down : CrampBinaryAAX;
@@ -1530,83 +1530,83 @@ let TargetPrefix = "cramp" in {
 
 let TargetPrefix = "cramp" in {
 
-class ScalarCryptoGprIntrinsicAny
+class CrampScalarCryptoGprIntrinsicAny
     : Intrinsic<[llvm_anyint_ty],
                 [LLVMMatchType<0>],
                 [IntrNoMem, IntrSpeculatable]>;
 
-class ScalarCryptoByteSelect32
+class CrampScalarCryptoByteSelect32
     : Intrinsic<[llvm_i32_ty],
                 [llvm_i32_ty, llvm_i32_ty, llvm_i8_ty],
                 [IntrNoMem, IntrWillReturn, IntrSpeculatable,
                  ImmArg<ArgIndex<2>>]>;
 
-class ScalarCryptoGprGprIntrinsic32
+class CrampScalarCryptoGprGprIntrinsic32
     : Intrinsic<[llvm_i32_ty],
                 [llvm_i32_ty, llvm_i32_ty],
                 [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
 
-class ScalarCryptoGprGprIntrinsic64
+class CrampScalarCryptoGprGprIntrinsic64
     : Intrinsic<[llvm_i64_ty],
                 [llvm_i64_ty, llvm_i64_ty],
                 [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
 
-class ScalarCryptoGprIntrinsic64
+class CrampScalarCryptoGprIntrinsic64
     : Intrinsic<[llvm_i64_ty],
                 [llvm_i64_ty],
                 [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
 
-class ScalarCryptoByteSelectAny
+class CrampScalarCryptoByteSelectAny
     : Intrinsic<[llvm_anyint_ty],
                 [LLVMMatchType<0>, LLVMMatchType<0>, llvm_i8_ty],
                 [IntrNoMem, IntrSpeculatable, IntrWillReturn,
                  ImmArg<ArgIndex<2>>]>;
 
 // Zknd
-def int_cramp_aes32dsi  : ScalarCryptoByteSelect32;
-def int_cramp_aes32dsmi : ScalarCryptoByteSelect32;
+def int_cramp_aes32dsi  : CrampScalarCryptoByteSelect32;
+def int_cramp_aes32dsmi : CrampScalarCryptoByteSelect32;
 
-def int_cramp_aes64ds   : ScalarCryptoGprGprIntrinsic64;
-def int_cramp_aes64dsm  : ScalarCryptoGprGprIntrinsic64;
+def int_cramp_aes64ds   : CrampScalarCryptoGprGprIntrinsic64;
+def int_cramp_aes64dsm  : CrampScalarCryptoGprGprIntrinsic64;
 
-def int_cramp_aes64im   : ScalarCryptoGprIntrinsic64;
+def int_cramp_aes64im   : CrampScalarCryptoGprIntrinsic64;
 
 // Zkne
-def int_cramp_aes32esi  : ScalarCryptoByteSelect32;
-def int_cramp_aes32esmi : ScalarCryptoByteSelect32;
+def int_cramp_aes32esi  : CrampScalarCryptoByteSelect32;
+def int_cramp_aes32esmi : CrampScalarCryptoByteSelect32;
 
-def int_cramp_aes64es   : ScalarCryptoGprGprIntrinsic64;
-def int_cramp_aes64esm  : ScalarCryptoGprGprIntrinsic64;
+def int_cramp_aes64es   : CrampScalarCryptoGprGprIntrinsic64;
+def int_cramp_aes64esm  : CrampScalarCryptoGprGprIntrinsic64;
 
 // Zknd & Zkne
-def int_cramp_aes64ks2  : ScalarCryptoGprGprIntrinsic64;
+def int_cramp_aes64ks2  : CrampScalarCryptoGprGprIntrinsic64;
 def int_cramp_aes64ks1i : Intrinsic<[llvm_i64_ty], [llvm_i64_ty, llvm_i32_ty],
                                     [IntrNoMem, IntrSpeculatable,
                                      IntrWillReturn, ImmArg<ArgIndex<1>>]>;
 
 // Zknh
-def int_cramp_sha256sig0 : ScalarCryptoGprIntrinsicAny;
-def int_cramp_sha256sig1 : ScalarCryptoGprIntrinsicAny;
-def int_cramp_sha256sum0 : ScalarCryptoGprIntrinsicAny;
-def int_cramp_sha256sum1 : ScalarCryptoGprIntrinsicAny;
+def int_cramp_sha256sig0 : CrampScalarCryptoGprIntrinsicAny;
+def int_cramp_sha256sig1 : CrampScalarCryptoGprIntrinsicAny;
+def int_cramp_sha256sum0 : CrampScalarCryptoGprIntrinsicAny;
+def int_cramp_sha256sum1 : CrampScalarCryptoGprIntrinsicAny;
 
-def int_cramp_sha512sig0l : ScalarCryptoGprGprIntrinsic32;
-def int_cramp_sha512sig0h : ScalarCryptoGprGprIntrinsic32;
-def int_cramp_sha512sig1l : ScalarCryptoGprGprIntrinsic32;
-def int_cramp_sha512sig1h : ScalarCryptoGprGprIntrinsic32;
-def int_cramp_sha512sum0r : ScalarCryptoGprGprIntrinsic32;
-def int_cramp_sha512sum1r : ScalarCryptoGprGprIntrinsic32;
+def int_cramp_sha512sig0l : CrampScalarCryptoGprGprIntrinsic32;
+def int_cramp_sha512sig0h : CrampScalarCryptoGprGprIntrinsic32;
+def int_cramp_sha512sig1l : CrampScalarCryptoGprGprIntrinsic32;
+def int_cramp_sha512sig1h : CrampScalarCryptoGprGprIntrinsic32;
+def int_cramp_sha512sum0r : CrampScalarCryptoGprGprIntrinsic32;
+def int_cramp_sha512sum1r : CrampScalarCryptoGprGprIntrinsic32;
 
-def int_cramp_sha512sig0 : ScalarCryptoGprIntrinsic64;
-def int_cramp_sha512sig1 : ScalarCryptoGprIntrinsic64;
-def int_cramp_sha512sum0 : ScalarCryptoGprIntrinsic64;
-def int_cramp_sha512sum1 : ScalarCryptoGprIntrinsic64;
+def int_cramp_sha512sig0 : CrampScalarCryptoGprIntrinsic64;
+def int_cramp_sha512sig1 : CrampScalarCryptoGprIntrinsic64;
+def int_cramp_sha512sum0 : CrampScalarCryptoGprIntrinsic64;
+def int_cramp_sha512sum1 : CrampScalarCryptoGprIntrinsic64;
 
 // Zksed
-def int_cramp_sm4ks      : ScalarCryptoByteSelectAny;
-def int_cramp_sm4ed      : ScalarCryptoByteSelectAny;
+def int_cramp_sm4ks      : CrampScalarCryptoByteSelectAny;
+def int_cramp_sm4ed      : CrampScalarCryptoByteSelectAny;
 
 // Zksh
-def int_cramp_sm3p0      : ScalarCryptoGprIntrinsicAny;
-def int_cramp_sm3p1      : ScalarCryptoGprIntrinsicAny;
+def int_cramp_sm3p0      : CrampScalarCryptoGprIntrinsicAny;
+def int_cramp_sm3p1      : CrampScalarCryptoGprIntrinsicAny;
 } // TargetPrefix = "cramp"
