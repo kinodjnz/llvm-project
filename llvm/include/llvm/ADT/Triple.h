@@ -865,6 +865,11 @@ public:
     return getArch() == Triple::riscv32 || getArch() == Triple::riscv64;
   }
 
+  /// Tests whether the target is 32-bit Cramp.
+  bool isCramp() const {
+    return getArch() == Triple::cramp32;
+  }
+
   /// Tests whether the target is 32-bit SPARC (little and big endian).
   bool isSPARC32() const {
     return getArch() == Triple::sparc || getArch() == Triple::sparcel;
