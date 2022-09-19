@@ -26,6 +26,9 @@ extern int __clzsi2(si_int);
 #endif
 
 // Precondition: a != 0
+#if defined(__cramp)
+#error "hoge"
+#endif
 
 COMPILER_RT_ABI int __clzdi2(di_int a) {
   dwords x;
