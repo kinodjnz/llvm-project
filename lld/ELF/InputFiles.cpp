@@ -28,6 +28,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/RISCVAttributeParser.h"
+#include "llvm/Support/CrampAttributeParser.h"
 #include "llvm/Support/TarWriter.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -911,6 +912,28 @@ InputSectionBase *ObjFile<ELFT>::createInputSection(uint32_t idx,
     }
   }
 
+  if (sec.sh_type == SHT_CRAMP_ATTRIBUTES && config->emachine == EM_CRAMP) {
+    CrampAttributeParser attributes;
+    ArrayRef<uint8_t> contents = check(this->getObj().getSectionContents(sec));
+    if (Error e = attributes.parse(contents, support::little)) {
+      auto *isec = make<InputSection>(*this, sec, name);
+      warn(toString(isec) + ": " + llvm::toString(std::move(e)));
+    } else {
+      // FIXME: Validate arch tag contains C if and only if EF_RISCV_RVC is
+      // present.
+
+      // FIXME: Retain the first attribute section we see. Tools such as
+      // llvm-objdump make use of the attribute section to determine which
+      // standard extensions to enable. In a full implementation we would merge
+      // all attribute sections.
+      if (in.attributes == nullptr) {
+        in.attributes = std::make_unique<InputSection>(*this, sec, name);
+        return in.attributes.get();
+      }
+      return &InputSection::discarded;
+    }
+  }
+
   if (sec.sh_type == SHT_LLVM_DEPENDENT_LIBRARIES && !config->relocatable) {
     ArrayRef<char> data =
         CHECK(this->getObj().template getSectionContentsAsArray<char>(sec), this);
@@ -1534,6 +1557,9 @@ static uint16_t getBitcodeMachineKind(StringRef path, const Triple &t) {
   case Triple::riscv32:
   case Triple::riscv64:
     return EM_RISCV;
+  case Triple::cramp32:
+  case Triple::cramp64:
+    return EM_CRAMP;
   case Triple::x86:
     return t.isOSIAMCU() ? EM_IAMCU : EM_386;
   case Triple::x86_64:

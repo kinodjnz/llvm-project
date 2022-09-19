@@ -1696,6 +1696,8 @@ template <class ELFT> void Writer<ELFT>::finalizeAddressDependentContent() {
   }
   if (!config->relocatable && config->emachine == EM_RISCV)
     riscvFinalizeRelax(pass);
+  if (!config->relocatable && config->emachine == EM_CRAMP)
+    crampFinalizeRelax(pass);
 
   if (config->relocatable)
     for (OutputSection *sec : outputSections)
@@ -1878,6 +1880,13 @@ template <class ELFT> void Writer<ELFT>::finalizeSections() {
   // value/section does not matter but it has to be relative, so set its
   // st_shndx arbitrarily to 1 (Out::elfHeader).
   if (config->emachine == EM_RISCV && !config->shared) {
+    OutputSection *sec = findSection(".sdata");
+    ElfSym::riscvGlobalPointer =
+        addOptionalRegular("__global_pointer$", sec ? sec : Out::elfHeader,
+                           0x800, STV_DEFAULT);
+  }
+
+  if (config->emachine == EM_CRAMP && !config->shared) {
     OutputSection *sec = findSection(".sdata");
     ElfSym::riscvGlobalPointer =
         addOptionalRegular("__global_pointer$", sec ? sec : Out::elfHeader,

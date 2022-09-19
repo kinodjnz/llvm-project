@@ -598,6 +598,8 @@ static int64_t getTlsTpOffset(const Symbol &s) {
     return s.getVA(0) + (tls->p_vaddr & (tls->p_align - 1)) - 0x7000;
   case EM_RISCV:
     return s.getVA(0) + (tls->p_vaddr & (tls->p_align - 1));
+  case EM_CRAMP:
+    return s.getVA(0) + (tls->p_vaddr & (tls->p_align - 1));
 
     // Variant 2.
   case EM_HEXAGON:
@@ -722,6 +724,8 @@ uint64_t InputSectionBase::getRelocTargetVA(const InputFile *file, RelType type,
       else if (config->emachine == EM_PPC)
         dest = p;
       else if (config->emachine == EM_RISCV)
+        dest = getRISCVUndefinedRelativeWeakVA(type, p) + a;
+      else if (config->emachine == EM_CRAMP)
         dest = getRISCVUndefinedRelativeWeakVA(type, p) + a;
       else
         dest = sym.getVA(a);

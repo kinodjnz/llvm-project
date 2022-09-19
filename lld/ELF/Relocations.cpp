@@ -1200,6 +1200,7 @@ static unsigned handleTlsRelocation(RelType type, Symbol &sym,
   bool toExecRelax = !config->shared && config->emachine != EM_ARM &&
                      config->emachine != EM_HEXAGON &&
                      config->emachine != EM_RISCV &&
+                     config->emachine != EM_CRAMP &&
                      !c.file->ppc64DisableTLSRelax;
 
   // If we are producing an executable and the symbol is non-preemptable, it
@@ -1502,6 +1503,7 @@ void RelocationScanner::scan(ArrayRef<RelTy> rels) {
   // Sort relocations by offset for more efficient searching for
   // R_RISCV_PCREL_HI20 and R_PPC64_ADDR64.
   if (config->emachine == EM_RISCV ||
+      config->emachine == EM_CRAMP ||
       (config->emachine == EM_PPC64 && sec.name == ".toc"))
     llvm::stable_sort(sec.relocations,
                       [](const Relocation &lhs, const Relocation &rhs) {
