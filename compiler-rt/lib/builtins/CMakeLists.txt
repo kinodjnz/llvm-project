@@ -671,6 +671,21 @@ set(riscv64_SOURCES
   ${riscv_SOURCES}
 )
 
+set(cramp_SOURCES
+  cramp/save.S
+  cramp/restore.S
+  ${GENERIC_SOURCES}
+  ${GENERIC_TF_SOURCES}
+)
+set(cramp32_SOURCES
+  cramp/mulsi3.S
+  ${cramp_SOURCES}
+)
+set(cramp64_SOURCES
+  cramp/muldi3.S
+  ${cramp_SOURCES}
+)
+
 set(sparc_SOURCES ${GENERIC_SOURCES} ${GENERIC_TF_SOURCES})
 set(sparcv9_SOURCES ${GENERIC_SOURCES} ${GENERIC_TF_SOURCES})
 
@@ -764,6 +779,10 @@ else ()
       # For RISCV32, we must force enable int128 for compiling long
       # double routines.
       if("${arch}" STREQUAL "riscv32")
+        list(APPEND BUILTIN_CFLAGS_${arch} -fforce-enable-int128)
+      endif()
+
+      if("${arch}" STREQUAL "cramp32")
         list(APPEND BUILTIN_CFLAGS_${arch} -fforce-enable-int128)
       endif()
 

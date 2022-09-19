@@ -27,10 +27,12 @@ set(PPC32 powerpc powerpcspe)
 set(PPC64 powerpc64 powerpc64le)
 set(RISCV32 riscv32)
 set(RISCV64 riscv64)
+set(CRAMP32 cramp32)
+set(CRAMP64 cramp64)
 set(VE ve)
 
 set(ALL_CRT_SUPPORTED_ARCH ${X86} ${X86_64} ${ARM32} ${ARM64} ${PPC32}
-    ${PPC64} ${RISCV32} ${RISCV64} ${VE} ${HEXAGON})
+    ${PPC64} ${RISCV32} ${RISCV64} ${CRAMP32} ${CRAMP64} ${VE} ${HEXAGON})
 
 include(CompilerRTUtils)
 

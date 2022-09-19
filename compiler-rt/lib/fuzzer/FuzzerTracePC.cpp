@@ -137,6 +137,8 @@ inline ALWAYS_INLINE uintptr_t GetPreviousInstructionPc(uintptr_t PC) {
   return PC - 8;
 #elif defined(__riscv__)
   return PC - 2;
+#elif defined(__cramp__)
+  return PC - 2;
 #elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
   return PC - 1;
 #else
