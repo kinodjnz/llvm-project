@@ -255,9 +255,11 @@ void LinkerDriver::addFile(StringRef path, bool withLOption) {
         files.push_back(createObjFile(p.first, path, true));
       else if (magic == file_magic::bitcode)
         files.push_back(make<BitcodeFile>(p.first, path, p.second, true));
-      else
+      else {
+        std::string strMagic = toString(magic);
         warn(path + ": archive member '" + p.first.getBufferIdentifier() +
-             "' is neither ET_REL nor LLVM bitcode");
+             "' is neither ET_REL nor LLVM bitcode (" + strMagic + ")");
+      }
     }
     InputFile::isInGroup = saved;
     if (!saved)
