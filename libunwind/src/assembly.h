@@ -63,6 +63,35 @@
 #  endif
 # endif
 # define SEPARATOR ;
+#elif defined(__cramp)
+# define CRAMP_ISIZE (__cramp_xlen / 8)
+# define CRAMP_FOFFSET (CRAMP_ISIZE * 32)
+# if defined(__cramp_flen)
+#  define CRAMP_FSIZE (__cramp_flen / 8)
+# endif
+
+# if __cramp_xlen == 64
+#  define ILOAD ld
+#  define ISTORE sd
+# elif __cramp_xlen == 32
+#  define ILOAD lw
+#  define ISTORE sw
+# else
+#  error "Unsupported __cramp_xlen"
+# endif
+
+# if defined(__cramp_flen)
+#  if __cramp_flen == 64
+#   define FLOAD fld
+#   define FSTORE fsd
+#  elif __cramp_flen == 32
+#   define FLOAD flw
+#   define FSTORE fsw
+#  else
+#   error "Unsupported __cramp_flen"
+#  endif
+# endif
+# define SEPARATOR ;
 #else
 #define SEPARATOR ;
 #endif

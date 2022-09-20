@@ -299,6 +299,9 @@ static const StringMap<MachineInfo> TargetMap{
     // RISC-V
     {"elf32-littleriscv", {ELF::EM_RISCV, false, true}},
     {"elf64-littleriscv", {ELF::EM_RISCV, true, true}},
+    // Cramp
+    {"elf32-littlecramp", {ELF::EM_CRAMP, false, true}},
+    {"elf64-littlecramp", {ELF::EM_CRAMP, true, true}},
     // PowerPC
     {"elf32-powerpc", {ELF::EM_PPC, false, false}},
     {"elf32-powerpcle", {ELF::EM_PPC, false, true}},

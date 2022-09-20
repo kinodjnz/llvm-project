@@ -694,7 +694,7 @@ enum : unsigned {
   EF_CRAMP_TSO = 0x0010,
 };
 
-// ELF Relocation types for RISC-V
+// ELF Relocation types for Cramp
 enum {
 #include "ELFRelocs/Cramp.def"
 };
@@ -1422,6 +1422,9 @@ enum {
 
   // RISCV program header types.
   PT_RISCV_ATTRIBUTES = 0x70000003,
+
+  // Cramp program header types.
+  PT_CRAMP_ATTRIBUTES = 0x70000003,
 };
 
 // Segment flag bits.

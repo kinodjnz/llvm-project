@@ -1252,6 +1252,87 @@ DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind15Registers_riscv6jumptoEv)
 
   ret                       // jump to ra
 
+#elif defined(__cramp)
+
+//
+// void libunwind::Registers_cramp::jumpto()
+//
+// On entry:
+//  thread_state pointer is in a0
+//
+  .p2align 2
+DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind15Registers_cramp6jumptoEv)
+# if defined(__cramp_flen)
+  FLOAD    f0, (CRAMP_FOFFSET + CRAMP_FSIZE * 0)(a0)
+  FLOAD    f1, (CRAMP_FOFFSET + CRAMP_FSIZE * 1)(a0)
+  FLOAD    f2, (CRAMP_FOFFSET + CRAMP_FSIZE * 2)(a0)
+  FLOAD    f3, (CRAMP_FOFFSET + CRAMP_FSIZE * 3)(a0)
+  FLOAD    f4, (CRAMP_FOFFSET + CRAMP_FSIZE * 4)(a0)
+  FLOAD    f5, (CRAMP_FOFFSET + CRAMP_FSIZE * 5)(a0)
+  FLOAD    f6, (CRAMP_FOFFSET + CRAMP_FSIZE * 6)(a0)
+  FLOAD    f7, (CRAMP_FOFFSET + CRAMP_FSIZE * 7)(a0)
+  FLOAD    f8, (CRAMP_FOFFSET + CRAMP_FSIZE * 8)(a0)
+  FLOAD    f9, (CRAMP_FOFFSET + CRAMP_FSIZE * 9)(a0)
+  FLOAD    f10, (CRAMP_FOFFSET + CRAMP_FSIZE * 10)(a0)
+  FLOAD    f11, (CRAMP_FOFFSET + CRAMP_FSIZE * 11)(a0)
+  FLOAD    f12, (CRAMP_FOFFSET + CRAMP_FSIZE * 12)(a0)
+  FLOAD    f13, (CRAMP_FOFFSET + CRAMP_FSIZE * 13)(a0)
+  FLOAD    f14, (CRAMP_FOFFSET + CRAMP_FSIZE * 14)(a0)
+  FLOAD    f15, (CRAMP_FOFFSET + CRAMP_FSIZE * 15)(a0)
+  FLOAD    f16, (CRAMP_FOFFSET + CRAMP_FSIZE * 16)(a0)
+  FLOAD    f17, (CRAMP_FOFFSET + CRAMP_FSIZE * 17)(a0)
+  FLOAD    f18, (CRAMP_FOFFSET + CRAMP_FSIZE * 18)(a0)
+  FLOAD    f19, (CRAMP_FOFFSET + CRAMP_FSIZE * 19)(a0)
+  FLOAD    f20, (CRAMP_FOFFSET + CRAMP_FSIZE * 20)(a0)
+  FLOAD    f21, (CRAMP_FOFFSET + CRAMP_FSIZE * 21)(a0)
+  FLOAD    f22, (CRAMP_FOFFSET + CRAMP_FSIZE * 22)(a0)
+  FLOAD    f23, (CRAMP_FOFFSET + CRAMP_FSIZE * 23)(a0)
+  FLOAD    f24, (CRAMP_FOFFSET + CRAMP_FSIZE * 24)(a0)
+  FLOAD    f25, (CRAMP_FOFFSET + CRAMP_FSIZE * 25)(a0)
+  FLOAD    f26, (CRAMP_FOFFSET + CRAMP_FSIZE * 26)(a0)
+  FLOAD    f27, (CRAMP_FOFFSET + CRAMP_FSIZE * 27)(a0)
+  FLOAD    f28, (CRAMP_FOFFSET + CRAMP_FSIZE * 28)(a0)
+  FLOAD    f29, (CRAMP_FOFFSET + CRAMP_FSIZE * 29)(a0)
+  FLOAD    f30, (CRAMP_FOFFSET + CRAMP_FSIZE * 30)(a0)
+  FLOAD    f31, (CRAMP_FOFFSET + CRAMP_FSIZE * 31)(a0)
+# endif
+
+  // x0 is zero
+  ILOAD    x1, (CRAMP_ISIZE * 0)(a0) // restore pc into ra
+  ILOAD    x2, (CRAMP_ISIZE * 2)(a0)
+  ILOAD    x3, (CRAMP_ISIZE * 3)(a0)
+  ILOAD    x4, (CRAMP_ISIZE * 4)(a0)
+  ILOAD    x5, (CRAMP_ISIZE * 5)(a0)
+  ILOAD    x6, (CRAMP_ISIZE * 6)(a0)
+  ILOAD    x7, (CRAMP_ISIZE * 7)(a0)
+  ILOAD    x8, (CRAMP_ISIZE * 8)(a0)
+  ILOAD    x9, (CRAMP_ISIZE * 9)(a0)
+  // skip a0 for now
+  ILOAD    x11, (CRAMP_ISIZE * 11)(a0)
+  ILOAD    x12, (CRAMP_ISIZE * 12)(a0)
+  ILOAD    x13, (CRAMP_ISIZE * 13)(a0)
+  ILOAD    x14, (CRAMP_ISIZE * 14)(a0)
+  ILOAD    x15, (CRAMP_ISIZE * 15)(a0)
+  ILOAD    x16, (CRAMP_ISIZE * 16)(a0)
+  ILOAD    x17, (CRAMP_ISIZE * 17)(a0)
+  ILOAD    x18, (CRAMP_ISIZE * 18)(a0)
+  ILOAD    x19, (CRAMP_ISIZE * 19)(a0)
+  ILOAD    x20, (CRAMP_ISIZE * 20)(a0)
+  ILOAD    x21, (CRAMP_ISIZE * 21)(a0)
+  ILOAD    x22, (CRAMP_ISIZE * 22)(a0)
+  ILOAD    x23, (CRAMP_ISIZE * 23)(a0)
+  ILOAD    x24, (CRAMP_ISIZE * 24)(a0)
+  ILOAD    x25, (CRAMP_ISIZE * 25)(a0)
+  ILOAD    x26, (CRAMP_ISIZE * 26)(a0)
+  ILOAD    x27, (CRAMP_ISIZE * 27)(a0)
+  ILOAD    x28, (CRAMP_ISIZE * 28)(a0)
+  ILOAD    x29, (CRAMP_ISIZE * 29)(a0)
+  ILOAD    x30, (CRAMP_ISIZE * 30)(a0)
+  ILOAD    x31, (CRAMP_ISIZE * 31)(a0)
+  ILOAD    x10, (CRAMP_ISIZE * 10)(a0)   // restore a0
+
+  ret                       // jump to ra
+
 #elif defined(__s390x__)
 
 DEFINE_LIBUNWIND_FUNCTION(_ZN9libunwind15Registers_s390x6jumptoEv)

@@ -73,6 +73,8 @@ _LIBUNWIND_HIDDEN int __unw_init_local(unw_cursor_t *cursor,
 # define REGISTER_KIND Registers_sparc
 #elif defined(__riscv)
 # define REGISTER_KIND Registers_riscv
+#elif defined(__cramp)
+# define REGISTER_KIND Registers_cramp
 #elif defined(__ve__)
 # define REGISTER_KIND Registers_ve
 #elif defined(__s390x__)

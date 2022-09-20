@@ -216,6 +216,8 @@ uint32_t llvm::object::getELFRelativeRelocationType(uint32_t Machine) {
     return ELF::R_PPC64_RELATIVE;
   case ELF::EM_RISCV:
     return ELF::R_RISCV_RELATIVE;
+  case ELF::EM_CRAMP:
+    return ELF::R_CRAMP_RELATIVE;
   case ELF::EM_S390:
     return ELF::R_390_RELATIVE;
   case ELF::EM_SPARC:
@@ -267,6 +269,9 @@ StringRef llvm::object::getELFSectionTypeName(uint32_t Machine, unsigned Type) {
     break;
   case ELF::EM_RISCV:
     switch (Type) { STRINGIFY_ENUM_CASE(ELF, SHT_RISCV_ATTRIBUTES); }
+    break;
+  case ELF::EM_CRAMP:
+    switch (Type) { STRINGIFY_ENUM_CASE(ELF, SHT_CRAMP_ATTRIBUTES); }
     break;
   default:
     break;
@@ -504,6 +509,14 @@ std::string ELFFile<ELFT>::getDynamicTagAsString(unsigned Arch,
 #undef RISCV_DYNAMIC_TAG
     }
     break;
+
+  case ELF::EM_CRAMP:
+    switch (Type) {
+#define CRAMP_DYNAMIC_TAG(name, value) DYNAMIC_STRINGIFY_ENUM(name, value)
+#include "llvm/BinaryFormat/DynamicTags.def"
+#undef CRAMP_DYNAMIC_TAG
+    }
+    break;
   }
 #undef DYNAMIC_TAG
   switch (Type) {
@@ -514,6 +527,7 @@ std::string ELFFile<ELFT>::getDynamicTagAsString(unsigned Arch,
 #define PPC_DYNAMIC_TAG(name, value)
 #define PPC64_DYNAMIC_TAG(name, value)
 #define RISCV_DYNAMIC_TAG(name, value)
+#define CRAMP_DYNAMIC_TAG(name, value)
 // Also ignore marker tags such as DT_HIOS (maps to DT_VERNEEDNUM), etc.
 #define DYNAMIC_TAG_MARKER(name, value)
 #define DYNAMIC_TAG(name, value) case value: return #name;
@@ -525,6 +539,7 @@ std::string ELFFile<ELFT>::getDynamicTagAsString(unsigned Arch,
 #undef PPC_DYNAMIC_TAG
 #undef PPC64_DYNAMIC_TAG
 #undef RISCV_DYNAMIC_TAG
+#undef CRAMP_DYNAMIC_TAG
 #undef DYNAMIC_TAG_MARKER
 #undef DYNAMIC_STRINGIFY_ENUM
   default:

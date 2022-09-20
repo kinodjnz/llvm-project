@@ -58,6 +58,8 @@
 #include "llvm/Support/MipsABIFlags.h"
 #include "llvm/Support/RISCVAttributeParser.h"
 #include "llvm/Support/RISCVAttributes.h"
+#include "llvm/Support/CrampAttributeParser.h"
+#include "llvm/Support/CrampAttributes.h"
 #include "llvm/Support/ScopedPrinter.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -1201,6 +1203,7 @@ const EnumEntry<unsigned> ElfMachineType[] = {
   ENUM_ENT(EM_56800EX,       "EM_56800EX"),
   ENUM_ENT(EM_AMDGPU,        "EM_AMDGPU"),
   ENUM_ENT(EM_RISCV,         "RISC-V"),
+  ENUM_ENT(EM_CRAMP,         "Cramp"),
   ENUM_ENT(EM_LANAI,         "EM_LANAI"),
   ENUM_ENT(EM_BPF,           "EM_BPF"),
   ENUM_ENT(EM_VE,            "NEC SX-Aurora Vector Engine"),
@@ -1392,6 +1395,10 @@ static StringRef segmentTypeToString(unsigned Arch, unsigned Type) {
     break;
   case ELF::EM_RISCV:
     switch (Type) { LLVM_READOBJ_ENUM_CASE(ELF, PT_RISCV_ATTRIBUTES); }
+    break;
+  case ELF::EM_CRAMP:
+    switch (Type) { LLVM_READOBJ_ENUM_CASE(ELF, PT_CRAMP_ATTRIBUTES); }
+    break;
   }
 
   switch (Type) {
@@ -1434,6 +1441,10 @@ static std::string getGNUPtType(unsigned Arch, unsigned Type) {
 
   // E.g. "PT_RISCV_ATTRIBUTES"
   if (Seg.consume_front("PT_RISCV_"))
+    return Seg.str();
+
+  // E.g. "PT_CRAMP_ATTRIBUTES"
+  if (Seg.consume_front("PT_CRAMP_"))
     return Seg.str();
 
   // E.g. "PT_LOAD" -> "LOAD".
@@ -1626,6 +1637,15 @@ const EnumEntry<unsigned> ElfHeaderRISCVFlags[] = {
   ENUM_ENT(EF_RISCV_TSO, "TSO"),
 };
 
+const EnumEntry<unsigned> ElfHeaderCrampFlags[] = {
+  ENUM_ENT(EF_CRAMP_RVC, "RVC"),
+  ENUM_ENT(EF_CRAMP_FLOAT_ABI_SINGLE, "single-float ABI"),
+  ENUM_ENT(EF_CRAMP_FLOAT_ABI_DOUBLE, "double-float ABI"),
+  ENUM_ENT(EF_CRAMP_FLOAT_ABI_QUAD, "quad-float ABI"),
+  ENUM_ENT(EF_CRAMP_RVE, "RVE"),
+  ENUM_ENT(EF_CRAMP_TSO, "TSO"),
+};
+
 const EnumEntry<unsigned> ElfHeaderAVRFlags[] = {
   LLVM_READOBJ_ENUM_ENT(ELF, EF_AVR_ARCH_AVR1),
   LLVM_READOBJ_ENUM_ENT(ELF, EF_AVR_ARCH_AVR2),
@@ -1683,6 +1703,9 @@ const EnumEntry<unsigned> ElfMips16SymOtherFlags[] = {
 
 const EnumEntry<unsigned> ElfRISCVSymOtherFlags[] = {
     LLVM_READOBJ_ENUM_ENT(ELF, STO_RISCV_VARIANT_CC)};
+
+const EnumEntry<unsigned> ElfCrampSymOtherFlags[] = {
+    LLVM_READOBJ_ENUM_ENT(ELF, STO_CRAMP_VARIANT_CC)};
 
 static const char *getElfMipsOptionsOdkType(unsigned Odk) {
   switch (Odk) {
@@ -2648,6 +2671,15 @@ template <class ELFT> void ELFDumper<ELFT>::printArchSpecificInfo() {
       reportUniqueWarning("attribute printing not implemented for big-endian "
                           "RISC-V objects");
     break;
+  case EM_CRAMP:
+    if (Obj.isLE())
+      printAttributes(ELF::SHT_CRAMP_ATTRIBUTES,
+                      std::make_unique<CrampAttributeParser>(&W),
+                      support::little);
+    else
+      reportUniqueWarning("attribute printing not implemented for big-endian "
+                          "Cramp objects");
+    break;
   case EM_MSP430:
     printAttributes(ELF::SHT_MSP430_ATTRIBUTES,
                     std::make_unique<MSP430AttributeParser>(&W),
@@ -3363,6 +3395,8 @@ template <class ELFT> void GNUELFDumper<ELFT>::printFileHeaders() {
                    unsigned(ELF::EF_MIPS_MACH));
   else if (e.e_machine == EM_RISCV)
     ElfFlags = printFlags(e.e_flags, makeArrayRef(ElfHeaderRISCVFlags));
+  else if (e.e_machine == EM_CRAMP)
+    ElfFlags = printFlags(e.e_flags, makeArrayRef(ElfHeaderCrampFlags));
   else if (e.e_machine == EM_AVR)
     ElfFlags = printFlags(e.e_flags, makeArrayRef(ElfHeaderAVRFlags),
                           unsigned(ELF::EF_AVR_ARCH_MASK));
@@ -3862,6 +3896,15 @@ void GNUELFDumper<ELFT>::printSymbol(const Elf_Sym &Symbol, unsigned SymIndex,
       uint8_t Other = Symbol.st_other & ~0x3;
       if (Other & STO_RISCV_VARIANT_CC) {
         Other &= ~STO_RISCV_VARIANT_CC;
+        Fields[5].Str += " [VARIANT_CC";
+        if (Other != 0)
+          Fields[5].Str.append(" | " + utohexstr(Other, /*LowerCase=*/true));
+        Fields[5].Str.append("]");
+      }
+    } else if (this->Obj.getHeader().e_machine == ELF::EM_CRAMP) {
+      uint8_t Other = Symbol.st_other & ~0x3;
+      if (Other & STO_CRAMP_VARIANT_CC) {
+        Other &= ~STO_CRAMP_VARIANT_CC;
         Fields[5].Str += " [VARIANT_CC";
         if (Other != 0)
           Fields[5].Str.append(" | " + utohexstr(Other, /*LowerCase=*/true));
@@ -6516,6 +6559,8 @@ template <class ELFT> void LLVMELFDumper<ELFT>::printFileHeaders() {
       }
     } else if (E.e_machine == EM_RISCV)
       W.printFlags("Flags", E.e_flags, makeArrayRef(ElfHeaderRISCVFlags));
+    else if (E.e_machine == EM_CRAMP)
+      W.printFlags("Flags", E.e_flags, makeArrayRef(ElfHeaderCrampFlags));
     else if (E.e_machine == EM_AVR)
       W.printFlags("Flags", E.e_flags, makeArrayRef(ElfHeaderAVRFlags),
                    unsigned(ELF::EF_AVR_ARCH_MASK));
@@ -6770,6 +6815,10 @@ void LLVMELFDumper<ELFT>::printSymbol(const Elf_Sym &Symbol, unsigned SymIndex,
       SymOtherFlags.insert(SymOtherFlags.end(),
                            std::begin(ElfRISCVSymOtherFlags),
                            std::end(ElfRISCVSymOtherFlags));
+    } else if (this->Obj.getHeader().e_machine == EM_CRAMP) {
+      SymOtherFlags.insert(SymOtherFlags.end(),
+                           std::begin(ElfCrampSymOtherFlags),
+                           std::end(ElfCrampSymOtherFlags));
     }
     W.printFlags("Other", Symbol.st_other, makeArrayRef(SymOtherFlags), 0x3u);
   }

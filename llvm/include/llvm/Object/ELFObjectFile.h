@@ -56,6 +56,7 @@ class ELFObjectFileBase : public ObjectFile {
   SubtargetFeatures getMIPSFeatures() const;
   SubtargetFeatures getARMFeatures() const;
   SubtargetFeatures getRISCVFeatures() const;
+  SubtargetFeatures getCrampFeatures() const;
 
   StringRef getAMDGPUCPUName() const;
 
@@ -381,7 +382,8 @@ protected:
 
     for (const Elf_Shdr &Sec : *SectionsOrErr) {
       if (Sec.sh_type == ELF::SHT_ARM_ATTRIBUTES ||
-          Sec.sh_type == ELF::SHT_RISCV_ATTRIBUTES) {
+          Sec.sh_type == ELF::SHT_RISCV_ATTRIBUTES ||
+          Sec.sh_type == ELF::SHT_CRAMP_ATTRIBUTES) {
         auto ErrorOrContents = EF.getSectionContents(Sec);
         if (!ErrorOrContents)
           return ErrorOrContents.takeError();
@@ -754,6 +756,15 @@ Expected<uint32_t> ELFObjectFile<ELFT>::getSymbolFlags(DataRefImpl Sym) const {
     if (ESym->getType() == ELF::STT_FUNC && (ESym->st_value & 1) == 1)
       Result |= SymbolRef::SF_Thumb;
   } else if (EF.getHeader().e_machine == ELF::EM_RISCV) {
+    if (Expected<StringRef> NameOrErr = getSymbolName(Sym)) {
+      // Mark empty name symbols used for label differences.
+      if (NameOrErr->empty())
+        Result |= SymbolRef::SF_FormatSpecific;
+    } else {
+      // TODO: Actually report errors helpfully.
+      consumeError(NameOrErr.takeError());
+    }
+  } else if (EF.getHeader().e_machine == ELF::EM_CRAMP) {
     if (Expected<StringRef> NameOrErr = getSymbolName(Sym)) {
       // Mark empty name symbols used for label differences.
       if (NameOrErr->empty())
@@ -1204,6 +1215,8 @@ StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
       return (IsLittleEndian ? "elf32-powerpcle" : "elf32-powerpc");
     case ELF::EM_RISCV:
       return "elf32-littleriscv";
+    case ELF::EM_CRAMP:
+      return "elf32-littlecramp";
     case ELF::EM_CSKY:
       return "elf32-csky";
     case ELF::EM_SPARC:
@@ -1228,6 +1241,8 @@ StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
       return (IsLittleEndian ? "elf64-powerpcle" : "elf64-powerpc");
     case ELF::EM_RISCV:
       return "elf64-littleriscv";
+    case ELF::EM_CRAMP:
+      return "elf64-littlecramp";
     case ELF::EM_S390:
       return "elf64-s390";
     case ELF::EM_SPARCV9:
@@ -1292,6 +1307,15 @@ template <class ELFT> Triple::ArchType ELFObjectFile<ELFT>::getArch() const {
       return Triple::riscv32;
     case ELF::ELFCLASS64:
       return Triple::riscv64;
+    default:
+      report_fatal_error("Invalid ELFCLASS!");
+    }
+  case ELF::EM_CRAMP:
+    switch (EF.getHeader().e_ident[ELF::EI_CLASS]) {
+    case ELF::ELFCLASS32:
+      return Triple::cramp32;
+    case ELF::ELFCLASS64:
+      return Triple::cramp64;
     default:
       report_fatal_error("Invalid ELFCLASS!");
     }

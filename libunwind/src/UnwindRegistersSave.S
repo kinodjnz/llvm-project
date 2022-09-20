@@ -1180,6 +1180,86 @@ DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
   li     a0, 0  // return UNW_ESUCCESS
   ret           // jump to ra
 
+#elif defined(__cramp)
+
+#
+# extern int __unw_getcontext(unw_context_t* thread_state)
+#
+# On entry:
+#  thread_state pointer is in a0
+#
+DEFINE_LIBUNWIND_FUNCTION(__unw_getcontext)
+  ISTORE    x1, (CRAMP_ISIZE * 0)(a0) // store ra as pc
+  ISTORE    x1, (CRAMP_ISIZE * 1)(a0)
+  ISTORE    x2, (CRAMP_ISIZE * 2)(a0)
+  ISTORE    x3, (CRAMP_ISIZE * 3)(a0)
+  ISTORE    x4, (CRAMP_ISIZE * 4)(a0)
+  ISTORE    x5, (CRAMP_ISIZE * 5)(a0)
+  ISTORE    x6, (CRAMP_ISIZE * 6)(a0)
+  ISTORE    x7, (CRAMP_ISIZE * 7)(a0)
+  ISTORE    x8, (CRAMP_ISIZE * 8)(a0)
+  ISTORE    x9, (CRAMP_ISIZE * 9)(a0)
+  ISTORE    x10, (CRAMP_ISIZE * 10)(a0)
+  ISTORE    x11, (CRAMP_ISIZE * 11)(a0)
+  ISTORE    x12, (CRAMP_ISIZE * 12)(a0)
+  ISTORE    x13, (CRAMP_ISIZE * 13)(a0)
+  ISTORE    x14, (CRAMP_ISIZE * 14)(a0)
+  ISTORE    x15, (CRAMP_ISIZE * 15)(a0)
+  ISTORE    x16, (CRAMP_ISIZE * 16)(a0)
+  ISTORE    x17, (CRAMP_ISIZE * 17)(a0)
+  ISTORE    x18, (CRAMP_ISIZE * 18)(a0)
+  ISTORE    x19, (CRAMP_ISIZE * 19)(a0)
+  ISTORE    x20, (CRAMP_ISIZE * 20)(a0)
+  ISTORE    x21, (CRAMP_ISIZE * 21)(a0)
+  ISTORE    x22, (CRAMP_ISIZE * 22)(a0)
+  ISTORE    x23, (CRAMP_ISIZE * 23)(a0)
+  ISTORE    x24, (CRAMP_ISIZE * 24)(a0)
+  ISTORE    x25, (CRAMP_ISIZE * 25)(a0)
+  ISTORE    x26, (CRAMP_ISIZE * 26)(a0)
+  ISTORE    x27, (CRAMP_ISIZE * 27)(a0)
+  ISTORE    x28, (CRAMP_ISIZE * 28)(a0)
+  ISTORE    x29, (CRAMP_ISIZE * 29)(a0)
+  ISTORE    x30, (CRAMP_ISIZE * 30)(a0)
+  ISTORE    x31, (CRAMP_ISIZE * 31)(a0)
+
+# if defined(__cramp_flen)
+  FSTORE    f0, (CRAMP_FOFFSET + CRAMP_FSIZE * 0)(a0)
+  FSTORE    f1, (CRAMP_FOFFSET + CRAMP_FSIZE * 1)(a0)
+  FSTORE    f2, (CRAMP_FOFFSET + CRAMP_FSIZE * 2)(a0)
+  FSTORE    f3, (CRAMP_FOFFSET + CRAMP_FSIZE * 3)(a0)
+  FSTORE    f4, (CRAMP_FOFFSET + CRAMP_FSIZE * 4)(a0)
+  FSTORE    f5, (CRAMP_FOFFSET + CRAMP_FSIZE * 5)(a0)
+  FSTORE    f6, (CRAMP_FOFFSET + CRAMP_FSIZE * 6)(a0)
+  FSTORE    f7, (CRAMP_FOFFSET + CRAMP_FSIZE * 7)(a0)
+  FSTORE    f8, (CRAMP_FOFFSET + CRAMP_FSIZE * 8)(a0)
+  FSTORE    f9, (CRAMP_FOFFSET + CRAMP_FSIZE * 9)(a0)
+  FSTORE    f10, (CRAMP_FOFFSET + CRAMP_FSIZE * 10)(a0)
+  FSTORE    f11, (CRAMP_FOFFSET + CRAMP_FSIZE * 11)(a0)
+  FSTORE    f12, (CRAMP_FOFFSET + CRAMP_FSIZE * 12)(a0)
+  FSTORE    f13, (CRAMP_FOFFSET + CRAMP_FSIZE * 13)(a0)
+  FSTORE    f14, (CRAMP_FOFFSET + CRAMP_FSIZE * 14)(a0)
+  FSTORE    f15, (CRAMP_FOFFSET + CRAMP_FSIZE * 15)(a0)
+  FSTORE    f16, (CRAMP_FOFFSET + CRAMP_FSIZE * 16)(a0)
+  FSTORE    f17, (CRAMP_FOFFSET + CRAMP_FSIZE * 17)(a0)
+  FSTORE    f18, (CRAMP_FOFFSET + CRAMP_FSIZE * 18)(a0)
+  FSTORE    f19, (CRAMP_FOFFSET + CRAMP_FSIZE * 19)(a0)
+  FSTORE    f20, (CRAMP_FOFFSET + CRAMP_FSIZE * 20)(a0)
+  FSTORE    f21, (CRAMP_FOFFSET + CRAMP_FSIZE * 21)(a0)
+  FSTORE    f22, (CRAMP_FOFFSET + CRAMP_FSIZE * 22)(a0)
+  FSTORE    f23, (CRAMP_FOFFSET + CRAMP_FSIZE * 23)(a0)
+  FSTORE    f24, (CRAMP_FOFFSET + CRAMP_FSIZE * 24)(a0)
+  FSTORE    f25, (CRAMP_FOFFSET + CRAMP_FSIZE * 25)(a0)
+  FSTORE    f26, (CRAMP_FOFFSET + CRAMP_FSIZE * 26)(a0)
+  FSTORE    f27, (CRAMP_FOFFSET + CRAMP_FSIZE * 27)(a0)
+  FSTORE    f28, (CRAMP_FOFFSET + CRAMP_FSIZE * 28)(a0)
+  FSTORE    f29, (CRAMP_FOFFSET + CRAMP_FSIZE * 29)(a0)
+  FSTORE    f30, (CRAMP_FOFFSET + CRAMP_FSIZE * 30)(a0)
+  FSTORE    f31, (CRAMP_FOFFSET + CRAMP_FSIZE * 31)(a0)
+# endif
+
+  li     a0, 0  // return UNW_ESUCCESS
+  ret           // jump to ra
+
 #elif defined(__s390x__)
 
 //

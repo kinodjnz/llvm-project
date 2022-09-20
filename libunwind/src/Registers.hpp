@@ -38,6 +38,7 @@ enum {
   REGISTERS_SPARC64,
   REGISTERS_HEXAGON,
   REGISTERS_RISCV,
+  REGISTERS_CRAMP,
   REGISTERS_VE,
   REGISTERS_S390X,
 };
@@ -4300,6 +4301,327 @@ inline void Registers_riscv::setVectorRegister(int, v128) {
   _LIBUNWIND_ABORT("no riscv vector register support yet");
 }
 #endif // _LIBUNWIND_TARGET_RISCV
+
+#if defined(_LIBUNWIND_TARGET_CRAMP)
+/// Registers_cramp holds the register state of a thread in a Cramp
+/// process.
+
+// This check makes it safe when LIBUNWIND_ENABLE_CROSS_UNWINDING enabled.
+# ifdef __cramp
+#  if __cramp_xlen == 32
+typedef uint32_t reg_t;
+#  elif __cramp_xlen == 64
+typedef uint64_t reg_t;
+#  else
+#   error "Unsupported __cramp_xlen"
+#  endif
+
+#  if defined(__cramp_flen)
+#   if __cramp_flen == 64
+typedef double fp_t;
+#   elif __cramp_flen == 32
+typedef float fp_t;
+#   else
+#    error "Unsupported __cramp_flen"
+#   endif
+#  else
+// This is just for supressing undeclared error of fp_t.
+typedef double fp_t;
+#  endif
+# else
+// Use Max possible width when cross unwinding
+typedef uint64_t reg_t;
+typedef double fp_t;
+# define __cramp_xlen 64
+# define __cramp_flen 64
+#endif
+
+/// Registers_cramp holds the register state of a thread.
+class _LIBUNWIND_HIDDEN Registers_cramp {
+public:
+  Registers_cramp();
+  Registers_cramp(const void *registers);
+
+  bool        validRegister(int num) const;
+  reg_t       getRegister(int num) const;
+  void        setRegister(int num, reg_t value);
+  bool        validFloatRegister(int num) const;
+  fp_t        getFloatRegister(int num) const;
+  void        setFloatRegister(int num, fp_t value);
+  bool        validVectorRegister(int num) const;
+  v128        getVectorRegister(int num) const;
+  void        setVectorRegister(int num, v128 value);
+  static const char *getRegisterName(int num);
+  void        jumpto();
+  static constexpr int lastDwarfRegNum() {
+    return _LIBUNWIND_HIGHEST_DWARF_REGISTER_CRAMP;
+  }
+  static int  getArch() { return REGISTERS_CRAMP; }
+
+  reg_t       getSP() const { return _registers[2]; }
+  void        setSP(reg_t value) { _registers[2] = value; }
+  reg_t       getIP() const { return _registers[0]; }
+  void        setIP(reg_t value) { _registers[0] = value; }
+
+private:
+  // _registers[0] holds the pc
+  reg_t _registers[32];
+# if defined(__cramp_flen)
+  fp_t _floats[32];
+# endif
+};
+
+inline Registers_cramp::Registers_cramp(const void *registers) {
+  static_assert((check_fit<Registers_cramp, unw_context_t>::does_fit),
+                "cramp registers do not fit into unw_context_t");
+  memcpy(&_registers, registers, sizeof(_registers));
+# if __cramp_xlen == 32
+  static_assert(sizeof(_registers) == 0x80,
+                "expected float registers to be at offset 128");
+# elif __cramp_xlen == 64
+  static_assert(sizeof(_registers) == 0x100,
+                "expected float registers to be at offset 256");
+# else
+# error "Unexpected float registers."
+# endif
+
+# if defined(__cramp_flen)
+  memcpy(_floats,
+         static_cast<const uint8_t *>(registers) + sizeof(_registers),
+         sizeof(_floats));
+# endif
+}
+
+inline Registers_cramp::Registers_cramp() {
+  memset(&_registers, 0, sizeof(_registers));
+# if defined(__cramp_flen)
+  memset(&_floats, 0, sizeof(_floats));
+# endif
+}
+
+inline bool Registers_cramp::validRegister(int regNum) const {
+  if (regNum == UNW_REG_IP)
+    return true;
+  if (regNum == UNW_REG_SP)
+    return true;
+  if (regNum < 0)
+    return false;
+  if (regNum > UNW_CRAMP_F31)
+    return false;
+  return true;
+}
+
+inline reg_t Registers_cramp::getRegister(int regNum) const {
+  if (regNum == UNW_REG_IP)
+    return _registers[0];
+  if (regNum == UNW_REG_SP)
+    return _registers[2];
+  if (regNum == UNW_CRAMP_X0)
+    return 0;
+  if ((regNum > 0) && (regNum < 32))
+    return _registers[regNum];
+  _LIBUNWIND_ABORT("unsupported cramp register");
+}
+
+inline void Registers_cramp::setRegister(int regNum, reg_t value) {
+  if (regNum == UNW_REG_IP)
+    _registers[0] = value;
+  else if (regNum == UNW_REG_SP)
+    _registers[2] = value;
+  else if (regNum == UNW_CRAMP_X0)
+    /* x0 is hardwired to zero */
+    return;
+  else if ((regNum > 0) && (regNum < 32))
+    _registers[regNum] = value;
+  else
+    _LIBUNWIND_ABORT("unsupported cramp register");
+}
+
+inline const char *Registers_cramp::getRegisterName(int regNum) {
+  switch (regNum) {
+  case UNW_REG_IP:
+    return "pc";
+  case UNW_REG_SP:
+    return "sp";
+  case UNW_CRAMP_X0:
+    return "zero";
+  case UNW_CRAMP_X1:
+    return "ra";
+  case UNW_CRAMP_X2:
+    return "sp";
+  case UNW_CRAMP_X3:
+    return "gp";
+  case UNW_CRAMP_X4:
+    return "tp";
+  case UNW_CRAMP_X5:
+    return "t0";
+  case UNW_CRAMP_X6:
+    return "t1";
+  case UNW_CRAMP_X7:
+    return "t2";
+  case UNW_CRAMP_X8:
+    return "s0";
+  case UNW_CRAMP_X9:
+    return "s1";
+  case UNW_CRAMP_X10:
+    return "a0";
+  case UNW_CRAMP_X11:
+    return "a1";
+  case UNW_CRAMP_X12:
+    return "a2";
+  case UNW_CRAMP_X13:
+    return "a3";
+  case UNW_CRAMP_X14:
+    return "a4";
+  case UNW_CRAMP_X15:
+    return "a5";
+  case UNW_CRAMP_X16:
+    return "a6";
+  case UNW_CRAMP_X17:
+    return "a7";
+  case UNW_CRAMP_X18:
+    return "s2";
+  case UNW_CRAMP_X19:
+    return "s3";
+  case UNW_CRAMP_X20:
+    return "s4";
+  case UNW_CRAMP_X21:
+    return "s5";
+  case UNW_CRAMP_X22:
+    return "s6";
+  case UNW_CRAMP_X23:
+    return "s7";
+  case UNW_CRAMP_X24:
+    return "s8";
+  case UNW_CRAMP_X25:
+    return "s9";
+  case UNW_CRAMP_X26:
+    return "s10";
+  case UNW_CRAMP_X27:
+    return "s11";
+  case UNW_CRAMP_X28:
+    return "t3";
+  case UNW_CRAMP_X29:
+    return "t4";
+  case UNW_CRAMP_X30:
+    return "t5";
+  case UNW_CRAMP_X31:
+    return "t6";
+  case UNW_CRAMP_F0:
+    return "ft0";
+  case UNW_CRAMP_F1:
+    return "ft1";
+  case UNW_CRAMP_F2:
+    return "ft2";
+  case UNW_CRAMP_F3:
+    return "ft3";
+  case UNW_CRAMP_F4:
+    return "ft4";
+  case UNW_CRAMP_F5:
+    return "ft5";
+  case UNW_CRAMP_F6:
+    return "ft6";
+  case UNW_CRAMP_F7:
+    return "ft7";
+  case UNW_CRAMP_F8:
+    return "fs0";
+  case UNW_CRAMP_F9:
+    return "fs1";
+  case UNW_CRAMP_F10:
+    return "fa0";
+  case UNW_CRAMP_F11:
+    return "fa1";
+  case UNW_CRAMP_F12:
+    return "fa2";
+  case UNW_CRAMP_F13:
+    return "fa3";
+  case UNW_CRAMP_F14:
+    return "fa4";
+  case UNW_CRAMP_F15:
+    return "fa5";
+  case UNW_CRAMP_F16:
+    return "fa6";
+  case UNW_CRAMP_F17:
+    return "fa7";
+  case UNW_CRAMP_F18:
+    return "fs2";
+  case UNW_CRAMP_F19:
+    return "fs3";
+  case UNW_CRAMP_F20:
+    return "fs4";
+  case UNW_CRAMP_F21:
+    return "fs5";
+  case UNW_CRAMP_F22:
+    return "fs6";
+  case UNW_CRAMP_F23:
+    return "fs7";
+  case UNW_CRAMP_F24:
+    return "fs8";
+  case UNW_CRAMP_F25:
+    return "fs9";
+  case UNW_CRAMP_F26:
+    return "fs10";
+  case UNW_CRAMP_F27:
+    return "fs11";
+  case UNW_CRAMP_F28:
+    return "ft8";
+  case UNW_CRAMP_F29:
+    return "ft9";
+  case UNW_CRAMP_F30:
+    return "ft10";
+  case UNW_CRAMP_F31:
+    return "ft11";
+  default:
+    return "unknown register";
+  }
+}
+
+inline bool Registers_cramp::validFloatRegister(int regNum) const {
+# if defined(__cramp_flen)
+  if (regNum < UNW_CRAMP_F0)
+    return false;
+  if (regNum > UNW_CRAMP_F31)
+    return false;
+  return true;
+# else
+  (void)regNum;
+  return false;
+# endif
+}
+
+inline fp_t Registers_cramp::getFloatRegister(int regNum) const {
+# if defined(__cramp_flen)
+  assert(validFloatRegister(regNum));
+  return _floats[regNum - UNW_CRAMP_F0];
+# else
+  (void)regNum;
+  _LIBUNWIND_ABORT("libunwind not built with float support");
+# endif
+}
+
+inline void Registers_cramp::setFloatRegister(int regNum, fp_t value) {
+# if defined(__cramp_flen)
+  assert(validFloatRegister(regNum));
+  _floats[regNum - UNW_CRAMP_F0] = value;
+# else
+  (void)regNum;
+  (void)value;
+  _LIBUNWIND_ABORT("libunwind not built with float support");
+# endif
+}
+
+inline bool Registers_cramp::validVectorRegister(int) const {
+  return false;
+}
+
+inline v128 Registers_cramp::getVectorRegister(int) const {
+  _LIBUNWIND_ABORT("no cramp vector register support yet");
+}
+
+inline void Registers_cramp::setVectorRegister(int, v128) {
+  _LIBUNWIND_ABORT("no cramp vector register support yet");
+}
+#endif // _LIBUNWIND_TARGET_CRAMP
 
 #if defined(_LIBUNWIND_TARGET_VE)
 /// Registers_ve holds the register state of a thread in a VE process.

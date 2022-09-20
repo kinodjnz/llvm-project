@@ -448,6 +448,28 @@ static bool supportsRISCV(uint64_t Type) {
   }
 }
 
+static bool supportsCramp(uint64_t Type) {
+  switch (Type) {
+  case ELF::R_CRAMP_NONE:
+  case ELF::R_CRAMP_32:
+  case ELF::R_CRAMP_32_PCREL:
+  case ELF::R_CRAMP_64:
+  case ELF::R_CRAMP_SET6:
+  case ELF::R_CRAMP_SUB6:
+  case ELF::R_CRAMP_ADD8:
+  case ELF::R_CRAMP_SUB8:
+  case ELF::R_CRAMP_ADD16:
+  case ELF::R_CRAMP_SUB16:
+  case ELF::R_CRAMP_ADD32:
+  case ELF::R_CRAMP_SUB32:
+  case ELF::R_CRAMP_ADD64:
+  case ELF::R_CRAMP_SUB64:
+    return true;
+  default:
+    return false;
+  }
+}
+
 static uint64_t resolveRISCV(uint64_t Type, uint64_t Offset, uint64_t S,
                              uint64_t LocData, int64_t Addend) {
   int64_t RA = Addend;
@@ -480,6 +502,44 @@ static uint64_t resolveRISCV(uint64_t Type, uint64_t Offset, uint64_t S,
   case ELF::R_RISCV_ADD64:
     return (A + (S + RA));
   case ELF::R_RISCV_SUB64:
+    return (A - (S + RA));
+  default:
+    llvm_unreachable("Invalid relocation type");
+  }
+}
+
+static uint64_t resolveCramp(uint64_t Type, uint64_t Offset, uint64_t S,
+                             uint64_t LocData, int64_t Addend) {
+  int64_t RA = Addend;
+  uint64_t A = LocData;
+  switch (Type) {
+  case ELF::R_CRAMP_NONE:
+    return LocData;
+  case ELF::R_CRAMP_32:
+    return (S + RA) & 0xFFFFFFFF;
+  case ELF::R_CRAMP_32_PCREL:
+    return (S + RA - Offset) & 0xFFFFFFFF;
+  case ELF::R_CRAMP_64:
+    return S + RA;
+  case ELF::R_CRAMP_SET6:
+    return (A & 0xC0) | ((S + RA) & 0x3F);
+  case ELF::R_CRAMP_SUB6:
+    return (A & 0xC0) | (((A & 0x3F) - (S + RA)) & 0x3F);
+  case ELF::R_CRAMP_ADD8:
+    return (A + (S + RA)) & 0xFF;
+  case ELF::R_CRAMP_SUB8:
+    return (A - (S + RA)) & 0xFF;
+  case ELF::R_CRAMP_ADD16:
+    return (A + (S + RA)) & 0xFFFF;
+  case ELF::R_CRAMP_SUB16:
+    return (A - (S + RA)) & 0xFFFF;
+  case ELF::R_CRAMP_ADD32:
+    return (A + (S + RA)) & 0xFFFFFFFF;
+  case ELF::R_CRAMP_SUB32:
+    return (A - (S + RA)) & 0xFFFFFFFF;
+  case ELF::R_CRAMP_ADD64:
+    return (A + (S + RA));
+  case ELF::R_CRAMP_SUB64:
     return (A - (S + RA));
   default:
     llvm_unreachable("Invalid relocation type");
@@ -725,6 +785,8 @@ getRelocationResolver(const ObjectFile &Obj) {
         return {supportsAmdgpu, resolveAmdgpu};
       case Triple::riscv64:
         return {supportsRISCV, resolveRISCV};
+      case Triple::cramp64:
+        return {supportsCramp, resolveCramp};
       default:
         return {nullptr, nullptr};
       }
@@ -758,6 +820,8 @@ getRelocationResolver(const ObjectFile &Obj) {
       return {supportsHexagon, resolveHexagon};
     case Triple::riscv32:
       return {supportsRISCV, resolveRISCV};
+    case Triple::cramp32:
+      return {supportsCramp, resolveCramp};
     case Triple::csky:
       return {supportsCSKY, resolveCSKY};
     default:
@@ -799,6 +863,10 @@ uint64_t resolveRelocation(RelocationResolver Resolver, const RelocationRef &R,
         // RISCV relocations use both LocData and Addend.
         if (Obj->getArch() != Triple::riscv32 &&
             Obj->getArch() != Triple::riscv64)
+          LocData = 0;
+        // Cramp relocations use both LocData and Addend.
+        if (Obj->getArch() != Triple::cramp32 &&
+            Obj->getArch() != Triple::cramp64)
           LocData = 0;
       }
     }
