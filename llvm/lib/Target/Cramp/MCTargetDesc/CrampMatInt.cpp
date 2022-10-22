@@ -364,17 +364,17 @@ InstSeq generateInstSeq(int64_t Val, const FeatureBitset &ActiveFeatures) {
   }
 
   // Perform optimization with rori in the Zbb extension.
-  if (Res.size() > 2 && ActiveFeatures[Cramp::FeatureStdExtZbb]) {
-    if (unsigned Rotate = extractRotateInfo(Val)) {
-      CrampMatInt::InstSeq TmpSeq;
-      uint64_t NegImm12 =
-          ((uint64_t)Val >> (64 - Rotate)) | ((uint64_t)Val << Rotate);
-      assert(isInt<12>(NegImm12));
-      TmpSeq.push_back(CrampMatInt::Inst(Cramp::ADDI, NegImm12));
-      TmpSeq.push_back(CrampMatInt::Inst(Cramp::RORI, Rotate));
-      Res = TmpSeq;
-    }
-  }
+  // if (Res.size() > 2 && ActiveFeatures[Cramp::FeatureStdExtZbb]) {
+  //   if (unsigned Rotate = extractRotateInfo(Val)) {
+  //     CrampMatInt::InstSeq TmpSeq;
+  //     uint64_t NegImm12 =
+  //         ((uint64_t)Val >> (64 - Rotate)) | ((uint64_t)Val << Rotate);
+  //     assert(isInt<12>(NegImm12));
+  //     TmpSeq.push_back(CrampMatInt::Inst(Cramp::ADDI, NegImm12));
+  //     TmpSeq.push_back(CrampMatInt::Inst(Cramp::RORI, Rotate));
+  //     Res = TmpSeq;
+  //   }
+  // }
   return Res;
 }
 

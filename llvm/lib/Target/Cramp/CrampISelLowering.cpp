@@ -242,13 +242,13 @@ CrampTargetLowering::CrampTargetLowering(const TargetMachine &TM,
   setOperationAction({ISD::SHL_PARTS, ISD::SRL_PARTS, ISD::SRA_PARTS}, XLenVT,
                      Custom);
 
-  if (Subtarget.hasStdExtZbb() || Subtarget.hasStdExtZbp() ||
-      Subtarget.hasStdExtZbkb()) {
-    if (Subtarget.is64Bit())
-      setOperationAction({ISD::ROTL, ISD::ROTR}, MVT::i32, Custom);
-  } else {
+  // if (Subtarget.hasStdExtZbb() || Subtarget.hasStdExtZbp() ||
+  //     Subtarget.hasStdExtZbkb()) {
+  //   if (Subtarget.is64Bit())
+  //     setOperationAction({ISD::ROTL, ISD::ROTR}, MVT::i32, Custom);
+  // } else {
     setOperationAction({ISD::ROTL, ISD::ROTR}, XLenVT, Expand);
-  }
+  // }
 
   if (Subtarget.hasStdExtZbp()) {
     // Custom lower bswap/bitreverse so we can convert them to GREVI to enable
@@ -946,8 +946,8 @@ CrampTargetLowering::CrampTargetLowering(const TargetMachine &TM,
   if (Subtarget.hasStdExtF())
     setTargetDAGCombine({ISD::FADD, ISD::FMAXNUM, ISD::FMINNUM});
 
-  if (Subtarget.hasStdExtZbp())
-    setTargetDAGCombine({ISD::ROTL, ISD::ROTR});
+  // if (Subtarget.hasStdExtZbp())
+  //   setTargetDAGCombine({ISD::ROTL, ISD::ROTR});
 
   if (Subtarget.hasStdExtZbb())
     setTargetDAGCombine({ISD::UMAX, ISD::UMIN, ISD::SMAX, ISD::SMIN});
