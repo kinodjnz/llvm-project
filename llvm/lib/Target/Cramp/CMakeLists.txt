@@ -40,6 +40,7 @@ add_llvm_target(CrampCodeGen
   CrampRedundantCopyElimination.cpp
   CrampRegisterBankInfo.cpp
   CrampRegisterInfo.cpp
+  CrampSelectionDAGInfo.cpp
   CrampSExtWRemoval.cpp
   CrampSubtarget.cpp
   CrampTargetMachine.cpp

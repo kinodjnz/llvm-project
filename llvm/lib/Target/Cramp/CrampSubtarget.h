@@ -17,6 +17,7 @@
 #include "CrampFrameLowering.h"
 #include "CrampISelLowering.h"
 #include "CrampInstrInfo.h"
+#include "CrampSelectionDAGInfo.h"
 #include "llvm/CodeGen/GlobalISel/CallLowering.h"
 #include "llvm/CodeGen/GlobalISel/InstructionSelector.h"
 #include "llvm/CodeGen/GlobalISel/LegalizerInfo.h"
@@ -108,7 +109,7 @@ private:
   CrampInstrInfo InstrInfo;
   CrampRegisterInfo RegInfo;
   CrampTargetLowering TLInfo;
-  SelectionDAGTargetInfo TSInfo;
+  CrampSelectionDAGInfo TSInfo;
 
   /// Initializes using the passed in CPU and feature strings so that we can
   /// use initializer lists for subtarget initialization.
