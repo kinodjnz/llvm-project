@@ -64,6 +64,7 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   case renderscript64: return "renderscript64";
   case riscv32:        return "riscv32";
   case riscv64:        return "riscv64";
+  case cramp32:        return "cramp32";
   case shave:          return "shave";
   case sparc:          return "sparc";
   case sparcel:        return "sparcel";

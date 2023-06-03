@@ -384,6 +384,7 @@ set(LLVM_ALL_TARGETS
   WebAssembly
   X86
   XCore
+  Cramp
   )
 
 # List of targets with JIT support:
