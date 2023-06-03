@@ -336,7 +336,9 @@ SDValue CrampSelectionDAGInfo::EmitTargetCodeForMemset(
         if (ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size))
           if (uint64_t SizeVal = ConstantSize->getZExtValue())
             if ((SizeVal & 3) == 0)
-              return EmitSpecializedMemclr(DAG, dl, Chain, Dst, Size);
+              return DAG.getNode(CrampISD::ALIGNED_BZERO4, dl, MVT::Other, Chain, Dst,
+                                 DAG.getZExtOrTrunc(Size, dl, MVT::i32));
+              // return EmitSpecializedMemclr(DAG, dl, Chain, Dst, Size);
 
   return SDValue();
 }

@@ -10178,6 +10178,65 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
   return TailMBB;
 }
 
+static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
+                                                  MachineBasicBlock *BB) {
+  assert(MI.getOpcode() == Cramp::AlignedBzero4 && "Unexpected instruction");
+
+  MachineFunction &MF = *BB->getParent();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineFunction::iterator It = ++BB->getIterator();
+
+  MachineBasicBlock *EntryMBB = BB;
+  MachineBasicBlock *LoopMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, LoopMBB);
+  MachineBasicBlock *DoneMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, DoneMBB);
+
+  // Transfer the remainder of BB and its successor edges to DoneMBB.
+  DoneMBB->splice(DoneMBB->begin(), EntryMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), EntryMBB->end());
+  DoneMBB->transferSuccessorsAndUpdatePHIs(EntryMBB);
+
+  EntryMBB->addSuccessor(LoopMBB);
+
+  MachineRegisterInfo &RegInfo = MF.getRegInfo();
+  Register LastDstReg = RegInfo.createVirtualRegister(&Cramp::GPRRegClass);
+  Register CurrDstReg = RegInfo.createVirtualRegister(&Cramp::GPRRegClass);
+  Register NextDstReg = RegInfo.createVirtualRegister(&Cramp::GPRRegClass);
+  Register Dst = MI.getOperand(0).getReg();
+  Register Sz = MI.getOperand(1).getReg();
+  DebugLoc DL = MI.getDebugLoc();
+
+  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+  BuildMI(EntryMBB, DL, TII->get(Cramp::ADD), LastDstReg)
+      .addUse(Dst)
+      .addUse(Sz);
+
+  BuildMI(LoopMBB, DL, TII->get(Cramp::PHI), CurrDstReg)
+    .addUse(Dst)
+    .addMBB(EntryMBB)
+    .addUse(NextDstReg)
+    .addMBB(LoopMBB);
+  BuildMI(LoopMBB, DL, TII->get(Cramp::SW))
+      .addReg(Cramp::X0)
+      .addReg(CurrDstReg)
+      .addImm(0);
+  BuildMI(LoopMBB, DL, TII->get(Cramp::ADDI), NextDstReg)
+      .addUse(CurrDstReg)
+      .addImm(4);
+  BuildMI(LoopMBB, DL, TII->get(Cramp::BNE))
+      .addUse(NextDstReg)
+      .addReg(LastDstReg)
+      .addMBB(LoopMBB);
+
+  LoopMBB->addSuccessor(LoopMBB);
+  LoopMBB->addSuccessor(DoneMBB);
+
+  MI.eraseFromParent();
+
+  return DoneMBB;
+}
+
 MachineBasicBlock *
 CrampTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
@@ -10209,6 +10268,8 @@ CrampTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return emitQuietFCMP(MI, BB, Cramp::FLE_D, Cramp::FEQ_D, Subtarget);
   case Cramp::PseudoQuietFLT_D:
     return emitQuietFCMP(MI, BB, Cramp::FLT_D, Cramp::FEQ_D, Subtarget);
+  case Cramp::AlignedBzero4:
+    return emitAlignedBzero4Pseudo(MI, BB);
   }
 }
 
@@ -11754,6 +11815,7 @@ const char *CrampTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(READ_CSR)
   NODE_NAME_CASE(WRITE_CSR)
   NODE_NAME_CASE(SWAP_CSR)
+  NODE_NAME_CASE(ALIGNED_BZERO4)
   }
   // clang-format on
   return nullptr;
