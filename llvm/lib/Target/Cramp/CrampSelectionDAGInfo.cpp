@@ -309,36 +309,34 @@ SDValue CrampSelectionDAGInfo::EmitSpecializedMemclr(
   return CallResult.second;
 }
 
+static bool shouldGenerateAlignedBzero4(SelectionDAG &DAG,
+    ConstantSDNode *ConstantSrc, ConstantSDNode *ConstantSize, Align Alignment) {
+
+  auto &F = DAG.getMachineFunction().getFunction();
+
+  if (F.hasOptNone())
+    return false;
+  if (!(ConstantSrc && ConstantSrc->getZExtValue() == 0))
+    return false;
+  if (!(ConstantSize && ConstantSize->getZExtValue() > 0 && (ConstantSize->getZExtValue() & 3) == 0))
+    return false;
+  if (!((Alignment.value() & 3) == 0))
+    return false;
+
+  return true;
+}
+
 SDValue CrampSelectionDAGInfo::EmitTargetCodeForMemset(
     SelectionDAG &DAG, const SDLoc &dl, SDValue Chain, SDValue Dst, SDValue Src,
     SDValue Size, Align Alignment, bool isVolatile, bool AlwaysInline,
     MachinePointerInfo DstPtrInfo) const {
 
-  // const CrampSubtarget &Subtarget =
-  //     DAG.getMachineFunction().getSubtarget<CrampSubtarget>();
+  ConstantSDNode *ConstantSrc = dyn_cast<ConstantSDNode>(Src);
+  ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
 
-  // ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
-
-  // // Generate TP loop for llvm.memset
-  // if (Subtarget.hasMVEIntegerOps() &&
-  //     shouldGenerateInlineTPLoop(Subtarget, DAG, ConstantSize, Alignment,
-  //                                false)) {
-  //   Src = DAG.getSplatBuildVector(MVT::v16i8, dl,
-  //                                 DAG.getNode(ISD::TRUNCATE, dl, MVT::i8, Src));
-  //   return DAG.getNode(ARMISD::MEMSETLOOP, dl, MVT::Other, Chain, Dst, Src,
-  //                      DAG.getZExtOrTrunc(Size, dl, MVT::i32));
-  // }
-
-  // if (!AlwaysInline)
-  if (ConstantSDNode *ConstantSrc = dyn_cast<ConstantSDNode>(Src))
-    if (ConstantSrc->getZExtValue() == 0)
-      if ((Alignment.value() & 3) == 0)
-        if (ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size))
-          if (uint64_t SizeVal = ConstantSize->getZExtValue())
-            if ((SizeVal & 3) == 0)
-              return DAG.getNode(CrampISD::ALIGNED_BZERO4, dl, MVT::Other, Chain, Dst,
-                                 DAG.getZExtOrTrunc(Size, dl, MVT::i32));
-              // return EmitSpecializedMemclr(DAG, dl, Chain, Dst, Size);
+  if (!AlwaysInline && shouldGenerateAlignedBzero4(DAG, ConstantSrc, ConstantSize, Alignment))
+    return DAG.getNode(CrampISD::ALIGNED_BZERO4, dl, MVT::Other, Chain, Dst,
+                       DAG.getMemBasePlusOffset(Dst, DAG.getZExtOrTrunc(Size, dl, MVT::i32), dl));
 
   return SDValue();
 }

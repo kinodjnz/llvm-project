@@ -10200,23 +10200,19 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
   EntryMBB->addSuccessor(LoopMBB);
 
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
-  Register LastDstReg = RegInfo.createVirtualRegister(&Cramp::GPRRegClass);
   Register CurrDstReg = RegInfo.createVirtualRegister(&Cramp::GPRRegClass);
   Register NextDstReg = RegInfo.createVirtualRegister(&Cramp::GPRRegClass);
   Register Dst = MI.getOperand(0).getReg();
-  Register Sz = MI.getOperand(1).getReg();
+  Register Lst = MI.getOperand(1).getReg();
   DebugLoc DL = MI.getDebugLoc();
 
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
-  BuildMI(EntryMBB, DL, TII->get(Cramp::ADD), LastDstReg)
-      .addUse(Dst)
-      .addUse(Sz);
 
   BuildMI(LoopMBB, DL, TII->get(Cramp::PHI), CurrDstReg)
-    .addUse(Dst)
-    .addMBB(EntryMBB)
-    .addUse(NextDstReg)
-    .addMBB(LoopMBB);
+      .addUse(Dst)
+      .addMBB(EntryMBB)
+      .addUse(NextDstReg)
+      .addMBB(LoopMBB);
   BuildMI(LoopMBB, DL, TII->get(Cramp::SW))
       .addReg(Cramp::X0)
       .addReg(CurrDstReg)
@@ -10226,7 +10222,7 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
       .addImm(4);
   BuildMI(LoopMBB, DL, TII->get(Cramp::BNE))
       .addUse(NextDstReg)
-      .addReg(LastDstReg)
+      .addReg(Lst)
       .addMBB(LoopMBB);
 
   LoopMBB->addSuccessor(LoopMBB);
