@@ -273,13 +273,33 @@ using namespace llvm;
 //                      makeArrayRef(TFOps, i));
 // }
 
-// SDValue ARMSelectionDAGInfo::EmitTargetCodeForMemmove(
-//     SelectionDAG &DAG, const SDLoc &dl, SDValue Chain, SDValue Dst, SDValue Src,
-//     SDValue Size, Align Alignment, bool isVolatile,
-//     MachinePointerInfo DstPtrInfo, MachinePointerInfo SrcPtrInfo) const {
-//   return EmitSpecializedLibcall(DAG, dl, Chain, Dst, Src, Size,
-//                                 Alignment.value(), RTLIB::MEMMOVE);
-// }
+static bool shouldGenerateAlignedMemcpy4(SelectionDAG &DAG,
+    ConstantSDNode *ConstantSize, Align Alignment) {
+
+  auto &F = DAG.getMachineFunction().getFunction();
+
+  if (F.hasOptNone())
+    return false;
+  if (!(ConstantSize && ConstantSize->getZExtValue() > 0 && (ConstantSize->getZExtValue() & 3) == 0))
+    return false;
+  if (!((Alignment.value() & 3) == 0))
+    return false;
+
+  return true;
+}
+
+SDValue CrampSelectionDAGInfo::EmitTargetCodeForMemcpy(
+    SelectionDAG &DAG, const SDLoc &dl, SDValue Chain, SDValue Dst, SDValue Src,
+    SDValue Size, Align Alignment, bool isVolatile, bool AlwaysInline,
+    MachinePointerInfo DstPtrInfo, MachinePointerInfo SrcPtrInfo) const {
+  ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
+
+  if (!AlwaysInline && shouldGenerateAlignedMemcpy4(DAG, ConstantSize, Alignment))
+    return DAG.getNode(CrampISD::ALIGNED_MEMCPY4, dl, MVT::Other, Chain, Dst, Src,
+                       DAG.getMemBasePlusOffset(Src, DAG.getZExtOrTrunc(Size, dl, MVT::i32), dl));
+
+  return SDValue();
+}
 
 SDValue CrampSelectionDAGInfo::EmitSpecializedMemclr(
     SelectionDAG &DAG, const SDLoc &dl, SDValue Chain, SDValue Dst, SDValue Size) const {

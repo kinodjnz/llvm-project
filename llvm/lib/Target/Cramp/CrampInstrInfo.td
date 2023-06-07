@@ -47,6 +47,9 @@ def SDT_CrampIntShiftDOpW : SDTypeProfile<1, 3, [
 def SDT_CrampAlignedBzero4 : SDTypeProfile<0, 2, [
   SDTCisPtrTy<0>, SDTCisPtrTy<1>
 ]>;
+def SDT_CrampAlignedMemcpy4 : SDTypeProfile<0, 3, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
+]>;
 
 // Target-independent nodes, but with target-specific formats.
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_CallSeqStart,
@@ -104,6 +107,9 @@ def cramp_la_tls_gd : SDNode<"CrampISD::LA_TLS_GD", SDTIntUnaryOp>;
 def cramp_aligned_bzero4 : SDNode<"CrampISD::ALIGNED_BZERO4",
                                   SDT_CrampAlignedBzero4,
                                   [SDNPHasChain, SDNPMayStore]>;
+def cramp_aligned_memcpy4 : SDNode<"CrampISD::ALIGNED_MEMCPY4",
+                                   SDT_CrampAlignedMemcpy4,
+                                   [SDNPHasChain, SDNPMayStore]>;
 
 //===----------------------------------------------------------------------===//
 // Operand and SDNode transformation definitions.
@@ -1681,6 +1687,9 @@ def : Pat<(binop_allwusers<add> GPR:$rs1, (AddiPair:$rs2)),
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
 def AlignedBzero4 : Pseudo<(outs), (ins GPR:$dst, GPR:$lst), [(cramp_aligned_bzero4 GPR:$dst, GPR:$lst)]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedMemcpy4 : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(cramp_aligned_memcpy4 GPR:$dst, GPR:$src, GPR:$srclst)]>;
 
 //===----------------------------------------------------------------------===//
 // Standard extensions
