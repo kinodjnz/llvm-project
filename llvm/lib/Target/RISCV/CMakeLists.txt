@@ -40,6 +40,7 @@ add_llvm_target(RISCVCodeGen
   RISCVRedundantCopyElimination.cpp
   RISCVRegisterBankInfo.cpp
   RISCVRegisterInfo.cpp
+  RISCVSelectionDAGInfo.cpp
   RISCVSExtWRemoval.cpp
   RISCVSubtarget.cpp
   RISCVTargetMachine.cpp
