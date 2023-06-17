@@ -44,6 +44,12 @@ def SDT_RISCVIntBinOpW : SDTypeProfile<1, 2, [
 def SDT_RISCVIntShiftDOpW : SDTypeProfile<1, 3, [
   SDTCisSameAs<0, 1>, SDTCisSameAs<0, 2>, SDTCisVT<0, i64>, SDTCisVT<3, i64>
 ]>;
+def SDT_RISCVAlignedBzero4 : SDTypeProfile<0, 2, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>
+]>;
+def SDT_RISCVAlignedMemcpy4 : SDTypeProfile<0, 3, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
+]>;
 
 // Target-independent nodes, but with target-specific formats.
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_CallSeqStart,
@@ -97,6 +103,13 @@ def riscv_la : SDNode<"RISCVISD::LA", SDTLoad,
 def riscv_la_tls_ie : SDNode<"RISCVISD::LA_TLS_IE", SDTLoad,
                              [SDNPHasChain, SDNPMayLoad, SDNPMemOperand]>;
 def riscv_la_tls_gd : SDNode<"RISCVISD::LA_TLS_GD", SDTIntUnaryOp>;
+
+def riscv_aligned_bzero4 : SDNode<"RISCVISD::ALIGNED_BZERO4",
+                                  SDT_RISCVAlignedBzero4,
+                                  [SDNPHasChain, SDNPMayStore]>;
+def riscv_aligned_memcpy4 : SDNode<"RISCVISD::ALIGNED_MEMCPY4",
+                                   SDT_RISCVAlignedMemcpy4,
+                                   [SDNPHasChain, SDNPMayStore]>;
 
 //===----------------------------------------------------------------------===//
 // Operand and SDNode transformation definitions.
@@ -1842,6 +1855,12 @@ def : Pat<(binop_allwusers<add> GPR:$rs1, (AddiPair:$rs2)),
           (ADDIW (ADDIW GPR:$rs1, (AddiPairImmLarge AddiPair:$rs2)),
                  (AddiPairImmSmall AddiPair:$rs2))>;
 }
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedBzero4 : Pseudo<(outs), (ins GPR:$dst, GPR:$lst), [(riscv_aligned_bzero4 GPR:$dst, GPR:$lst)]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedMemcpy4 : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4 GPR:$dst, GPR:$src, GPR:$srclst)]>;
 
 //===----------------------------------------------------------------------===//
 // Standard extensions
