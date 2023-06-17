@@ -379,7 +379,7 @@ InstSeq generateInstSeq(int64_t Val, const FeatureBitset &ActiveFeatures) {
 
   // Perform optimization with rori in the Zbb and th.srri in the XTheadBb
   // extension.
-  if (Res.size() > 2 && (ActiveFeatures[RISCV::FeatureStdExtZbb] ||
+  if (Res.size() > 2 && ((ActiveFeatures[RISCV::FeatureStdExtZbb] && !ActiveFeatures[RISCV::FeatureCrampXnorot]) ||
                          ActiveFeatures[RISCV::FeatureVendorXTHeadBb])) {
     if (unsigned Rotate = extractRotateInfo(Val)) {
       RISCVMatInt::InstSeq TmpSeq;
