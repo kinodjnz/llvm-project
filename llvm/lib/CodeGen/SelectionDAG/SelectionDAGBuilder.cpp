@@ -9062,10 +9062,15 @@ bool SelectionDAGBuilder::visitMemCmpBCmpCall(const CallInst &I) {
     return true;
   }
 
+  Align LhsAlign = I.getParamAlign(0).valueOrOne();
+  Align RhsAlign = I.getParamAlign(1).valueOrOne();
+  Align Alignment = std::min(LhsAlign, RhsAlign);
+  bool IsOnlyUsedInZeroEqualityComparison = isOnlyUsedInZeroEqualityComparison(&I);
+
   const SelectionDAGTargetInfo &TSI = DAG.getSelectionDAGInfo();
   std::pair<SDValue, SDValue> Res = TSI.EmitTargetCodeForMemcmp(
       DAG, getCurSDLoc(), DAG.getRoot(), getValue(LHS), getValue(RHS),
-      getValue(Size), MachinePointerInfo(LHS), MachinePointerInfo(RHS));
+      getValue(Size), MachinePointerInfo(LHS), MachinePointerInfo(RHS), IsOnlyUsedInZeroEqualityComparison);
   if (Res.first.getNode()) {
     processIntegerCallValue(I, Res.first, true);
     PendingLoads.push_back(Res.second);

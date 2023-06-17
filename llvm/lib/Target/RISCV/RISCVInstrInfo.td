@@ -46,6 +46,18 @@ def SDT_RISCVIntBinOpW : SDTypeProfile<1, 2, [
 def SDT_RISCVIntShiftDOpW : SDTypeProfile<1, 3, [
   SDTCisSameAs<0, 1>, SDTCisSameAs<0, 2>, SDTCisVT<0, i64>, SDTCisVT<3, i64>
 ]>;
+def SDT_RISCVAlignedFixedBzero : SDTypeProfile<0, 4, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisInt<2>, SDTCisInt<3>
+]>;
+def SDT_RISCVAlignedFixedSmallMemmove : SDTypeProfile<0, 3, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisInt<2>
+]>;
+def SDT_RISCVAlignedFixedMemcpy : SDTypeProfile<0, 5, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>, SDTCisInt<3>, SDTCisInt<4>
+]>;
+def SDT_RISCVAlignedFixedMemcmp : SDTypeProfile<2, 4, [
+  SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisPtrTy<2>, SDTCisPtrTy<3>, SDTCisPtrTy<4>, SDTCisInt<5>
+]>;
 
 // Target-independent nodes, but with target-specific formats.
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_CallSeqStart,
@@ -104,6 +116,23 @@ def riscv_probed_alloca : SDNode<"RISCVISD::PROBED_ALLOCA",
                                  SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>,
                                                       SDTCisVT<0, i32>]>,
                                  [SDNPHasChain, SDNPMayStore]>;
+
+def riscv_la_tls_ie : SDNode<"RISCVISD::LA_TLS_IE", SDTLoad,
+                             [SDNPHasChain, SDNPMayLoad, SDNPMemOperand]>;
+def riscv_la_tls_gd : SDNode<"RISCVISD::LA_TLS_GD", SDTIntUnaryOp>;
+
+def riscv_aligned_fixed_bzero : SDNode<"RISCVISD::ALIGNED_FIXED_BZERO",
+                                  SDT_RISCVAlignedFixedBzero,
+                                  [SDNPHasChain, SDNPMayStore]>;
+def riscv_aligned_fixed_small_memmove : SDNode<"RISCVISD::ALIGNED_FIXED_SMALL_MEMMOVE",
+                                  SDT_RISCVAlignedFixedSmallMemmove,
+                                  [SDNPHasChain, SDNPMayStore]>;
+def riscv_aligned_fixed_memcpy : SDNode<"RISCVISD::ALIGNED_FIXED_MEMCPY",
+                                   SDT_RISCVAlignedFixedMemcpy,
+                                   [SDNPHasChain, SDNPMayStore]>;
+def riscv_aligned_fixed_memcmp : SDNode<"RISCVISD::ALIGNED_FIXED_MEMCMP",
+                                  SDT_RISCVAlignedFixedMemcmp,
+                                  [SDNPHasChain, SDNPMayStore]>;
 
 //===----------------------------------------------------------------------===//
 // Operand and SDNode transformation definitions.
@@ -2086,6 +2115,89 @@ let Predicates = [IsRV64] in {
 def : Pat<(binop_allwusers<add> GPR:$rs1, immop_oneuse<AddiPair>:$rs2),
           (ADDIW (i64 (ADDIW GPR:$rs1, (AddiPairImmLarge imm:$rs2))),
                  (AddiPairImmSmall imm:$rs2))>;
+}
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedFixedBzero : Pseudo<(outs), (ins GPR:$dst, GPR:$lst, i32imm:$size, i32imm:$unrollsize), [(riscv_aligned_fixed_bzero GPR:$dst, GPR:$lst, (i32 imm:$size), (i32 imm:$unrollsize))]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedFixedSmallMemmove : Pseudo<(outs), (ins GPR:$dst, GPR:$src, i32imm:$size), [(riscv_aligned_fixed_small_memmove GPR:$dst, GPR:$src, (i32 imm:$size))]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedFixedMemcpy : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclast, i32imm:$size, i32imm:$unrollsize), [(riscv_aligned_fixed_memcpy GPR:$dst, GPR:$src, GPR:$srclast, (i32 imm:$size), (i32 imm:$unrollsize))]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedFixedMemcmp : Pseudo<(outs GPR:$data1, GPR:$data2), (ins GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, i32imm:$size), [(set GPR:$data1, GPR:$data2, (riscv_aligned_fixed_memcmp GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, (i32 imm:$size)))]>;
+
+//===----------------------------------------------------------------------===//
+// Experimental RV64 i32 legalization patterns.
+//===----------------------------------------------------------------------===//
+
+def simm12i32 : ImmLeaf<i32, [{return isInt<12>(Imm);}]>;
+
+// Convert from i32 immediate to i64 target immediate to make SelectionDAG type
+// checking happy so we can use ADDIW which expects an XLen immediate.
+def as_i64imm : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(N->getSExtValue(), SDLoc(N), MVT::i64);
+}]>;
+
+def zext_is_sext : PatFrag<(ops node:$src), (zext node:$src), [{
+  KnownBits Known = CurDAG->computeKnownBits(N->getOperand(0), 0);
+  return Known.isNonNegative();
+}]>;
+
+let Predicates = [IsRV64] in {
+def : LdPat<sextloadi8, LB, i32>;
+def : LdPat<extloadi8, LBU, i32>; // Prefer unsigned due to no c.lb in Zcb.
+def : LdPat<sextloadi16, LH, i32>;
+def : LdPat<extloadi16, LH, i32>;
+def : LdPat<zextloadi8, LBU, i32>;
+def : LdPat<zextloadi16, LHU, i32>;
+
+def : StPat<truncstorei8, SB, GPR, i32>;
+def : StPat<truncstorei16, SH, GPR, i32>;
+
+def : Pat<(anyext GPR:$src), (COPY GPR:$src)>;
+def : Pat<(sext GPR:$src), (ADDIW GPR:$src, 0)>;
+def : Pat<(trunc GPR:$src), (COPY GPR:$src)>;
+
+def : PatGprGpr<add, ADDW, i32, i32>;
+def : PatGprGpr<sub, SUBW, i32, i32>;
+def : PatGprGpr<and, AND, i32, i32>;
+def : PatGprGpr<or, OR, i32, i32>;
+def : PatGprGpr<xor, XOR, i32, i32>;
+def : PatGprGpr<shiftopw<shl>, SLLW, i32, i64>;
+def : PatGprGpr<shiftopw<srl>, SRLW, i32, i64>;
+def : PatGprGpr<shiftopw<sra>, SRAW, i32, i64>;
+
+def : Pat<(i32 (add GPR:$rs1, simm12i32:$imm)),
+          (ADDIW GPR:$rs1, (i64 (as_i64imm $imm)))>;
+def : Pat<(i32 (and GPR:$rs1, simm12i32:$imm)),
+          (ANDI GPR:$rs1, (i64 (as_i64imm $imm)))>;
+def : Pat<(i32 (or GPR:$rs1, simm12i32:$imm)),
+          (ORI GPR:$rs1, (i64 (as_i64imm $imm)))>;
+def : Pat<(i32 (xor GPR:$rs1, simm12i32:$imm)),
+          (XORI GPR:$rs1, (i64 (as_i64imm $imm)))>;
+
+def : PatGprImm<shl, SLLIW, uimm5, i32>;
+def : PatGprImm<srl, SRLIW, uimm5, i32>;
+def : PatGprImm<sra, SRAIW, uimm5, i32>;
+
+def : Pat<(i32 (and GPR:$rs, TrailingOnesMask:$mask)),
+          (SRLI (i32 (SLLI $rs, (i64 (XLenSubTrailingOnes $mask)))),
+                (i64 (XLenSubTrailingOnes $mask)))>;
+
+// Use sext if the sign bit of the input is 0.
+def : Pat<(zext_is_sext GPR:$src), (ADDIW GPR:$src, 0)>;
+}
+
+let Predicates = [IsRV64, NotHasStdExtZba] in {
+def : Pat<(zext GPR:$src), (SRLI (i64 (SLLI GPR:$src, 32)), 32)>;
+
+// If we're shifting a 32-bit zero extended value left by 0-31 bits, use 2
+// shifts instead of 3. This can occur when unsigned is used to index an array.
+def : Pat<(shl (zext GPR:$rs), uimm5:$shamt),
+          (SRLI (i64 (SLLI GPR:$rs, 32)), (ImmSubFrom32 uimm5:$shamt))>;
 }
 
 //===----------------------------------------------------------------------===//
