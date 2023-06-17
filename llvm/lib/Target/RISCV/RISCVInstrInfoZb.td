@@ -339,7 +339,7 @@ def SH3ADD_UW : ALUW_rr<0b0010000, 0b110, "sh3add.uw">,
                 Sched<[WriteSHXADD32, ReadSHXADD32, ReadSHXADD32]>;
 } // Predicates = [HasStdExtZba, IsRV64]
 
-let Predicates = [HasStdExtZbbOrZbkb] in {
+let Predicates = [HasStdExtZbbWithCrampXnorotOrZbkb] in {
 def ROL   : ALU_rr<0b0110000, 0b001, "rol">,
             Sched<[WriteRotateReg, ReadRotateReg, ReadRotateReg]>;
 def ROR   : ALU_rr<0b0110000, 0b101, "ror">,
@@ -347,9 +347,9 @@ def ROR   : ALU_rr<0b0110000, 0b101, "ror">,
 
 def RORI  : RVBShift_ri<0b01100, 0b101, OPC_OP_IMM, "rori">,
             Sched<[WriteRotateImm, ReadRotateImm]>;
-} // Predicates = [HasStdExtZbbOrZbkb]
+} // Predicates = [HasStdExtZbbWithCrampXnorotOrZbkb]
 
-let Predicates = [HasStdExtZbbOrZbkb, IsRV64], IsSignExtendingOpW = 1 in {
+let Predicates = [HasStdExtZbbWithCrampXnorotOrZbkb, IsRV64], IsSignExtendingOpW = 1 in {
 def ROLW  : ALUW_rr<0b0110000, 0b001, "rolw">,
             Sched<[WriteRotateReg32, ReadRotateReg32, ReadRotateReg32]>;
 def RORW  : ALUW_rr<0b0110000, 0b101, "rorw">,
@@ -357,7 +357,7 @@ def RORW  : ALUW_rr<0b0110000, 0b101, "rorw">,
 
 def RORIW : RVBShiftW_ri<0b0110000, 0b101, OPC_OP_IMM_32, "roriw">,
             Sched<[WriteRotateImm32, ReadRotateImm32]>;
-} // Predicates = [HasStdExtZbbOrZbkb, IsRV64]
+} // Predicates = [HasStdExtZbbWithCrampXnorotOrZbkb, IsRV64]
 
 let Predicates = [HasStdExtZbs] in {
 def BCLR : ALU_rr<0b0100100, 0b001, "bclr">,

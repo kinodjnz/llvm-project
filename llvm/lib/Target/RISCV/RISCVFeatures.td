@@ -153,6 +153,13 @@ def HasStdExtZbb : Predicate<"Subtarget->hasStdExtZbb()">,
                              AssemblerPredicate<(all_of FeatureStdExtZbb),
                              "'Zbb' (Basic Bit-Manipulation)">;
 
+def FeatureCrampXnorot
+    : SubtargetFeature<"xnorot", "HasCrampXnorot", "true",
+                       "'Xnorot' (Without Rotation)">;
+def HasCrampXnorot : Predicate<"Subtarget->hasCrampXnorot()">,
+                             AssemblerPredicate<(all_of FeatureCrampXnorot),
+                             "'Xnorot' (Without Rotation)">;
+
 def FeatureStdExtZbc
     : SubtargetFeature<"zbc", "HasStdExtZbc", "true",
                        "'Zbc' (Carry-Less Multiplication)">;
@@ -185,6 +192,12 @@ def HasStdExtZbbOrZbkb
     : Predicate<"Subtarget->hasStdExtZbb() || Subtarget->hasStdExtZbkb()">,
                 AssemblerPredicate<(any_of FeatureStdExtZbb, FeatureStdExtZbkb),
                                    "'Zbb' (Basic Bit-Manipulation) or "
+                                   "'Zbkb' (Bitmanip instructions for Cryptography)">;
+
+def HasStdExtZbbWithCrampXnorotOrZbkb
+    : Predicate<"(Subtarget->hasStdExtZbb() && Subtarget->hasCrampXnorot()) || Subtarget->hasStdExtZbkb()">,
+                AssemblerPredicate<(any_of FeatureStdExtZbb, FeatureStdExtZbkb),
+                                   "'Zbb' (Basic Bit-Manipulation) with 'Xnorot' (Without Rotation) or "
                                    "'Zbkb' (Bitmanip instructions for Cryptography)">;
 
 // The Carry-less multiply subextension for cryptography is a subset of basic
