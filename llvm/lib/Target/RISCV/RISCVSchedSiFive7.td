@@ -245,6 +245,7 @@ def : WriteRes<WriteShiftImm, [SiFive7PipeAB]>;
 def : WriteRes<WriteShiftImm32, [SiFive7PipeAB]>;
 def : WriteRes<WriteShiftReg, [SiFive7PipeAB]>;
 def : WriteRes<WriteShiftReg32, [SiFive7PipeAB]>;
+def : WriteRes<WriteCMov, [SiFive7PipeAB]>;
 }
 
 // Integer multiplication
@@ -903,6 +904,7 @@ def : SiFive7AnyToGPRBypass<ReadShiftImm>;
 def : SiFive7AnyToGPRBypass<ReadShiftImm32>;
 def : SiFive7AnyToGPRBypass<ReadShiftReg>;
 def : SiFive7AnyToGPRBypass<ReadShiftReg32>;
+def : SiFive7AnyToGPRBypass<ReadCMov>;
 def : ReadAdvance<ReadIDiv, 0>;
 def : ReadAdvance<ReadIDiv32, 0>;
 def : ReadAdvance<ReadIMul, 0>;

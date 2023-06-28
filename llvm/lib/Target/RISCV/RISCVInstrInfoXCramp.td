@@ -110,6 +110,10 @@ def uimm8_auipc : UImm8Operand {
   let ParserMatchClass = UImmAsmOperand<8, "C_AUIPC">;
 }
 
+// A 12-bit signed immediate plus one where the imm range will be [-2047, 2048].
+def simm12_plus1 : ImmLeaf<XLenVT,
+  [{return (isInt<12>(Imm) && Imm != -2048) || Imm == 2048;}]>;
+
 //===----------------------------------------------------------------------===//
 // Instruction Class Templates
 //===----------------------------------------------------------------------===//
@@ -154,6 +158,12 @@ class CBranch2<bits<3> funct3, string OpcodeStr>
   let Inst{12-10} = imm{4-2};
   let Inst{6-5} = imm{1-0};
 }
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBTernaryR<bits<2> funct2, bits<3> funct3, RISCVOpcode opcode,
+                  string opcodestr, string argstr>
+    : RVInstR4<funct2, funct3, opcode, (outs GPR:$rd),
+               (ins GPR:$rs1, GPR:$rs2, GPR:$rs3), opcodestr, argstr>;
 
 //===----------------------------------------------------------------------===//
 // Instructions
@@ -322,6 +332,28 @@ def C_AUIPC : RVInst16CIW<0b111, 0b00, (outs GPRC:$rd), (ins uimm8_auipc:$imm),
                           "c.auipc", "$rd, $imm">, Sched<[WriteIALU]> {
   let Inst{12-5} = imm{7-0};
 }
+
+let Predicates = [HasVendorXCramp] in
+def CMOV : RVBTernaryR<0b11, 0b101, OPC_OP, "cmov", "$rd, $rs2, $rs1, $rs3">,
+           Sched<[WriteCMov, ReadCMov, ReadCMov, ReadCMov]>;
+
+let Predicates = [HasVendorXCramp] in {
+def : Pat<(select (XLenVT (setne (XLenVT GPR:$rs2), 0)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+          (CMOV GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
+def : Pat<(select (XLenVT (seteq (XLenVT GPR:$rs2), 0)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
+          (CMOV GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
+def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), simm12_plus1:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+          (CMOV GPR:$rs1, (ADDI GPR:$x, (NegImm simm12_plus1:$y)), GPR:$rs3)>;
+def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), simm12_plus1:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
+          (CMOV GPR:$rs1, (ADDI GPR:$x, (NegImm simm12_plus1:$y)), GPR:$rs3)>;
+def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+          (CMOV GPR:$rs1, (XOR GPR:$x, GPR:$y), GPR:$rs3)>;
+def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
+          (CMOV GPR:$rs1, (XOR GPR:$x, GPR:$y), GPR:$rs3)>;
+
+def : Pat<(select (XLenVT GPR:$rs2), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+          (CMOV GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
+} // Predicates = [HasVendorXCramp]
 
 let Predicates = [HasVendorXCramp, HasStdExtMOrZmmul] in{
 def : CompressPat<(MUL GPRC:$rs1, GPRC:$rs1, GPRC:$rs2),
