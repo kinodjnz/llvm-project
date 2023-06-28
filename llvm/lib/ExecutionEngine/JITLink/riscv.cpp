@@ -66,6 +66,8 @@ const char *getEdgeKindName(Edge::Kind K) {
     return "R_RISCV_RVC_BRANCH";
   case R_RISCV_RVC_JUMP:
     return "R_RISCV_RVC_JUMP";
+  case R_RISCV_CRAMP_BRANCH:
+    return "R_RISCV_CRAMP_BRANCH";
   case R_RISCV_SUB6:
     return "R_RISCV_SUB6";
   case R_RISCV_SET6:

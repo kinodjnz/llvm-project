@@ -115,11 +115,45 @@ def uimm_bfi_len : Operand<XLenVT>,
 // Instruction Class Templates
 //===----------------------------------------------------------------------===//
 
+let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
+class CLoadByte_ri<bits<3> funct3, string OpcodeStr,
+                   RegisterClass cls, DAGOperand opnd>
+    : RVInst16CL<funct3, 0b00, (outs cls:$rd), (ins GPRCMem:$rs1, opnd:$imm),
+                 OpcodeStr, "$rd, ${imm}(${rs1})">;
+
+let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
+class CLoadHalf_ri<bits<3> funct3, string OpcodeStr,
+                   RegisterClass cls, DAGOperand opnd>
+    : RVInst16CL<funct3, 0b10, (outs cls:$rd), (ins GPRCMem:$rs1, opnd:$imm),
+                 OpcodeStr, "$rd, ${imm}(${rs1})">;
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
+class CStoreBH_rri<bits<3> funct3, string OpcodeStr,
+                 RegisterClass cls, DAGOperand opnd>
+    : RVInst16CS<funct3, 0b10, (outs), (ins cls:$rs2,GPRCMem:$rs1, opnd:$imm),
+                 OpcodeStr, "$rs2, ${imm}(${rs1})">;
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
+class CStoreZero_ri<bits<3> funct3, string OpcodeStr, DAGOperand opnd>
+    : RVInst16CCS0<funct3, 0b10, (outs), (ins GPRCMem:$rs1, opnd:$imm),
+                   OpcodeStr, "${imm}(${rs1})">;
+
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
 class CZcArith_r<bits<5> funct5, string OpcodeStr> :
   RVInst16CU<0b100111, funct5, 0b01, (outs GPRC:$rd_wb), (ins GPRC:$rd),
              OpcodeStr, "$rd"> {
   let Constraints = "$rd = $rd_wb";
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class CBranch2<bits<3> funct3, string OpcodeStr>
+    : RVInst16CCB<funct3, 0b00, (outs), (ins GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm),
+                  OpcodeStr, "$rs1, $rs2, $imm"> {
+  bits<6> imm;
+  let isBranch = 1;
+  let isTerminator = 1;
+  let Inst{12-10} = imm{4-2};
+  let Inst{6-5} = imm{1-0};
 }
 
 //===----------------------------------------------------------------------===//
@@ -443,6 +477,29 @@ def : CompressPat<(SW X0, GPRCMem:$rs1, uimm7_lsb00:$imm),
                   (CC_SW0 GPRCMem:$rs1, uimm7_lsb00:$imm)>;
 }// Predicates = [HasVendorXCramp]
 
+let Predicates = [HasVendorXCramp] in{
+def : CompressPat<(ADDI GPRC:$rd, GPRC:$rs, simm7_lsb00nonzero:$imm),
+                  (C_ADDI2W GPRC:$rd, GPRC:$rs, simm7_lsb00nonzero:$imm)>;
+def : CompressPat<(ADDI GPRC:$rd, GPRC:$rs, simm3_not0nor4:$imm),
+                  (C_ADDI2B GPRC:$rd, GPRC:$rs, simm3_not0nor4:$imm)>;
+def : CompressPat<(SLTIU GPRC:$rd, GPRC:$rs, 1),
+                  (C_SEQZ GPRC:$rd, GPRC:$rs)>;
+def : CompressPat<(SLTU GPRC:$rd, X0, GPRC:$rs),
+                  (C_SNEZ GPRC:$rd, GPRC:$rs)>;
+def : CompressPat<(ADD GPRC:$rd, GPRC:$rs1, GPRC:$rs2),
+                  (C_ADD2 GPRC:$rd, GPRC:$rs1, GPRC:$rs2)>;
+def : CompressPat<(SLT GPRC:$rd, GPRC:$rs1, GPRC:$rs2),
+                  (C_SLT GPRC:$rd, GPRC:$rs1, GPRC:$rs2)>;
+def : CompressPat<(SLTU GPRC:$rd, GPRC:$rs1, GPRC:$rs2),
+                  (C_SLTU GPRC:$rd, GPRC:$rs1, GPRC:$rs2)>;
+}// Predicates = [HasVendorXCramp]
+
+let Predicates = [HasVendorXCramp] in{
+def : CompressPat<(BEQ GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm),
+                  (C_BEQ GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm)>;
+def : CompressPat<(BNE GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm),
+                  (C_BNE GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm)>;
+}// Predicates = [HasVendorXCramp]
 
 //===----------------------------------------------------------------------===//
 // Pseudo Instructions

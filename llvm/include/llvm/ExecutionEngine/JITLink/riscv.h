@@ -161,6 +161,12 @@ enum EdgeKind_riscv : Edge::Kind {
   ///   Fixup <- (Target - Fixup + Addend)
   R_RISCV_RVC_BRANCH,
 
+  /// 5-bit PC-relative branch offset
+  ///
+  /// Fixup expression:
+  ///   Fixup <- (Target - Fixup + Addend)
+  R_RISCV_CRAMP_BRANCH,
+
   /// 11-bit PC-relative jump offset
   ///
   /// Fixup expression:
