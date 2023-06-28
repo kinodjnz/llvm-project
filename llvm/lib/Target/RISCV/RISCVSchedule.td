@@ -52,6 +52,7 @@ def WriteFDiv64     : SchedWrite;    // 64-bit floating point divide
 def WriteFSqrt16    : SchedWrite;    // 16-bit floating point sqrt
 def WriteFSqrt32    : SchedWrite;    // 32-bit floating point sqrt
 def WriteFSqrt64    : SchedWrite;    // 64-bit floating point sqrt
+def WriteCMov       : SchedWrite;    // cmov
 
 // Integer to float conversions
 def WriteFCvtI32ToF16  : SchedWrite;
@@ -185,6 +186,7 @@ def ReadFCvtF64ToF16     : SchedRead;
 def ReadFClass16         : SchedRead;
 def ReadFClass32         : SchedRead;
 def ReadFClass64         : SchedRead;
+def ReadCMov             : SchedRead; // cmov
 
 multiclass UnsupportedSchedZfh {
 let Unsupported = true in {
@@ -209,6 +211,7 @@ def : WriteRes<WriteFMovF16ToI16, []>;
 def : WriteRes<WriteFSGNJ16, []>;
 def : WriteRes<WriteFST16, []>;
 def : WriteRes<WriteFSqrt16, []>;
+def : WriteRes<WriteCMov, []>;
 
 def : ReadAdvance<ReadFAdd16, 0>;
 def : ReadAdvance<ReadFClass16, 0>;
@@ -229,6 +232,7 @@ def : ReadAdvance<ReadFMovI16ToF16, 0>;
 def : ReadAdvance<ReadFMovF16ToI16, 0>;
 def : ReadAdvance<ReadFSGNJ16, 0>;
 def : ReadAdvance<ReadFSqrt16, 0>;
+def : ReadAdvance<ReadCMov, 0>;
 } // Unsupported = true
 }
 

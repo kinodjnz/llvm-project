@@ -309,6 +309,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   if (!Subtarget.hasVendorXVentanaCondOps())
     setOperationAction(ISD::SELECT, XLenVT, Custom);
 
+  if (Subtarget.hasVendorXCramp())
+    setOperationAction(ISD::SELECT, XLenVT, Legal);
+
   static const unsigned FPLegalNodeTypes[] = {
       ISD::FMINNUM,        ISD::FMAXNUM,       ISD::LRINT,
       ISD::LLRINT,         ISD::LROUND,        ISD::LLROUND,
