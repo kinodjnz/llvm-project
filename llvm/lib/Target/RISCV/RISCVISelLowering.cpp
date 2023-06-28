@@ -411,8 +411,12 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
   if (Subtarget.useCCMovInsn())
     setOperationAction(ISD::SELECT, XLenVT, Legal);
-  else if (!Subtarget.hasVendorXTHeadCondMov())
+  else if (!Subtarget.hasVendorXTHeadCondMov()) {
     setOperationAction(ISD::SELECT, XLenVT, Custom);
+  }
+
+  if (Subtarget.hasVendorXCramp())
+    setOperationAction(ISD::SELECT, XLenVT, Legal);
 
   static const unsigned FPLegalNodeTypes[] = {
       ISD::FMINNUM,       ISD::FMAXNUM,        ISD::FMINIMUMNUM,

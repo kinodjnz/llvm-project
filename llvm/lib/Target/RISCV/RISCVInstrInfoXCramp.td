@@ -156,6 +156,12 @@ class CBranch2<bits<3> funct3, string OpcodeStr>
   let Inst{6-5} = imm{1-0};
 }
 
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBTernaryR<bits<2> funct2, bits<3> funct3, RISCVOpcode opcode,
+                  string opcodestr, string argstr>
+    : RVInstR4<funct2, funct3, opcode, (outs GPR:$rd),
+               (ins GPR:$rs1, GPR:$rs2, GPR:$rs3), opcodestr, argstr>;
+
 //===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
