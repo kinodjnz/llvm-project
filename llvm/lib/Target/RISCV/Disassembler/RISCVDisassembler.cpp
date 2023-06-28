@@ -494,6 +494,15 @@ DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
     }
     Insn = support::endian::read16le(Bytes.data());
 
+    if (STI.getFeatureBits()[RISCV::FeatureVendorXCramp]) {
+      LLVM_DEBUG(dbgs() << "Trying Cramp table:\n");
+      Result = decodeInstruction(DecoderTableCramp16, MI, Insn, Address, this, STI);
+      if (Result != MCDisassembler::Fail) {
+        Size = 2;
+        return Result;
+      }
+    }
+
     if (!STI.getFeatureBits()[RISCV::Feature64Bit]) {
       LLVM_DEBUG(
           dbgs() << "Trying RISCV32Only_16 table (16-bit Instruction):\n");

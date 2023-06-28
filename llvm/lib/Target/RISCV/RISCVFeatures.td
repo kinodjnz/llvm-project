@@ -476,6 +476,13 @@ def HasVendorXTHeadVdot : Predicate<"Subtarget->hasVendorXTHeadVdot()">,
                                     AssemblerPredicate<(all_of FeatureVendorXTHeadVdot),
                                     "'xtheadvdot' (T-Head Vector Extensions for Dot)">;
 
+def FeatureVendorXCramp
+    : SubtargetFeature<"xcramp", "HasVendorXCramp", "true",
+                       "'xcramp' (Cramp Instructions)">;
+def HasVendorXCramp : Predicate<"Subtarget->hasVendorXCramp()">,
+                                AssemblerPredicate<(all_of FeatureVendorXCramp),
+                                "'xcramp' (Cramp Instructions)">;
+
 //===----------------------------------------------------------------------===//
 // LLVM specific features and extensions
 //===----------------------------------------------------------------------===//
