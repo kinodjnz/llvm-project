@@ -518,6 +518,7 @@ static uint64_t getRISCVUndefinedRelativeWeakVA(uint64_t type, uint64_t p) {
   case R_RISCV_RVC_BRANCH:
   case R_RISCV_RVC_JUMP:
   case R_RISCV_PLT32:
+  case R_RISCV_CRAMP_BRANCH:
     return p;
   default:
     return 0;
