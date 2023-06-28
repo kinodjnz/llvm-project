@@ -276,6 +276,7 @@ RelExpr RISCV::getRelExpr(const RelType type, const Symbol &s,
   case R_RISCV_PCREL_HI20:
   case R_RISCV_RVC_BRANCH:
   case R_RISCV_RVC_JUMP:
+  case R_RISCV_CRAMP_BRANCH:
   case R_RISCV_32_PCREL:
     return R_PC;
   case R_RISCV_CALL:
@@ -345,6 +346,18 @@ void RISCV::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
     uint16_t imm3_1 = extractBits(val, 3, 1) << 3;
     uint16_t imm5 = extractBits(val, 5, 5) << 2;
     insn |= imm11 | imm4 | imm9_8 | imm10 | imm6 | imm7 | imm3_1 | imm5;
+
+    write16le(loc, insn);
+    return;
+  }
+
+  case R_RISCV_CRAMP_BRANCH: {
+    checkInt(loc, val, 6, rel);
+    checkAlignment(loc, val, 2, rel);
+    uint16_t insn = read16le(loc) & 0xE39F;
+    uint16_t imm5_3 = extractBits(val, 5, 3) << 10;
+    uint16_t imm2_1 = extractBits(val, 2, 1) << 5;
+    insn |= imm5_3 | imm2_1;
 
     write16le(loc, insn);
     return;

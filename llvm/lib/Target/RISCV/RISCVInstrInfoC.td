@@ -258,29 +258,6 @@ class CStore_rri<bits<3> funct3, string OpcodeStr,
     : RVInst16CS<funct3, 0b00, (outs), (ins cls:$rs2,GPRCMem:$rs1, opnd:$imm),
                  OpcodeStr, "$rs2, ${imm}(${rs1})">;
 
-let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-class CLoadByte_ri<bits<3> funct3, string OpcodeStr,
-                   RegisterClass cls, DAGOperand opnd>
-    : RVInst16CL<funct3, 0b00, (outs cls:$rd), (ins GPRCMem:$rs1, opnd:$imm),
-                 OpcodeStr, "$rd, ${imm}(${rs1})">;
-
-let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
-class CLoadHalf_ri<bits<3> funct3, string OpcodeStr,
-                   RegisterClass cls, DAGOperand opnd>
-    : RVInst16CL<funct3, 0b10, (outs cls:$rd), (ins GPRCMem:$rs1, opnd:$imm),
-                 OpcodeStr, "$rd, ${imm}(${rs1})">;
-
-let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
-class CStoreBH_rri<bits<3> funct3, string OpcodeStr,
-                 RegisterClass cls, DAGOperand opnd>
-    : RVInst16CS<funct3, 0b10, (outs), (ins cls:$rs2,GPRCMem:$rs1, opnd:$imm),
-                 OpcodeStr, "$rs2, ${imm}(${rs1})">;
-
-let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
-class CStoreZero_ri<bits<3> funct3, string OpcodeStr, DAGOperand opnd>
-    : RVInst16CS<funct3, 0b10, (outs), (ins GPRCMem:$rs1, opnd:$imm),
-                 OpcodeStr, "${imm}(${rs1})">;
-
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
 class Bcz<bits<3> funct3, string OpcodeStr,
           RegisterClass cls>

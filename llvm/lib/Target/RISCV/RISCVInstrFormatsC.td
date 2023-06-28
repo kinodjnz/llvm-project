@@ -168,3 +168,52 @@ class RVInst16CSZN<bits<6> funct6, bits<5> funct5, bits<2> opcode, dag outs,
   let Inst{6-2} = funct5;
   let Inst{1-0} = opcode;
 }
+
+class RVInst16CCS0<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+                   string opcodestr, string argstr>
+    : RVInst16<outs, ins, opcodestr, argstr, [], InstFormatCCS0> {
+  bits<3> rs1;
+
+  let Inst{15-13} = funct3;
+  let Inst{9-7} = rs1;
+  let Inst{1-0} = opcode;
+}
+
+class RVInst16CCR2<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+                  string opcodestr, string argstr>
+    : RVInst16<outs, ins, opcodestr, argstr, [], InstFormatCCR2> {
+  bits<3> rd;
+  bits<3> rs;
+
+  let Inst{15-13} = funct3;
+  let Inst{9-7} = rs;
+  let Inst{4-2} = rd;
+  let Inst{1-0} = opcode;
+}
+
+class RVInst16CCR3<bits<3> funct3, bits<2> funct2, bits<2> opcode, dag outs, dag ins,
+                  string opcodestr, string argstr>
+    : RVInst16<outs, ins, opcodestr, argstr, [], InstFormatCCR3> {
+  bits<3> rd;
+  bits<3> rs2;
+  bits<3> rs1;
+
+  let Inst{15-13} = funct3;
+  let Inst{12-10} = rs2;
+  let Inst{9-7} = rs1;
+  let Inst{6-5} = funct2;
+  let Inst{4-2} = rd;
+  let Inst{1-0} = opcode;
+}
+
+class RVInst16CCB<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+                  string opcodestr, string argstr>
+    : RVInst16<outs, ins, opcodestr, argstr, [], InstFormatCCB> {
+  bits<3> rs2;
+  bits<3> rs1;
+
+  let Inst{15-13} = funct3;
+  let Inst{9-7} = rs1;
+  let Inst{4-2} = rs2;
+  let Inst{1-0} = opcode;
+}

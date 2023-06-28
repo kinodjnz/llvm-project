@@ -418,6 +418,19 @@ private:
                                 Imm10 | Imm6 | Imm7 | Imm3_1 | Imm5;
       break;
     }
+    case R_RISCV_CRAMP_BRANCH: {
+      int64_t Value = E.getTarget().getAddress() + E.getAddend() - FixupAddress;
+      if (LLVM_UNLIKELY(!isInRangeForImm(Value >> 1, 5)))
+        return makeTargetOutOfRangeError(G, B, E);
+      if (LLVM_UNLIKELY(!isAlignmentCorrect(Value, 2)))
+        return makeAlignmentError(FixupAddress, Value, 2, E);
+      uint16_t Imm5_3 = extractBits(Value, 3, 3) << 10;
+      uint16_t Imm2_1 = extractBits(Value, 1, 2) << 5;
+      uint16_t RawInstr = *(little16_t *)FixupPtr;
+      *(little16_t *)FixupPtr =
+          (RawInstr & 0xE39F) | Imm5_3 | Imm2_1;
+      break;
+    }
     case R_RISCV_SUB6: {
       int64_t Value =
           *(reinterpret_cast<const uint8_t *>(FixupAddress.getValue())) & 0x3f;
@@ -514,6 +527,8 @@ private:
       return EdgeKind_riscv::R_RISCV_SUB64;
     case ELF::R_RISCV_RVC_BRANCH:
       return EdgeKind_riscv::R_RISCV_RVC_BRANCH;
+    case ELF::R_RISCV_CRAMP_BRANCH:
+      return EdgeKind_riscv::R_RISCV_CRAMP_BRANCH;
     case ELF::R_RISCV_RVC_JUMP:
       return EdgeKind_riscv::R_RISCV_RVC_JUMP;
     case ELF::R_RISCV_SUB6:

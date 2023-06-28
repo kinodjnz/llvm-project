@@ -71,6 +71,7 @@ RISCVAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
       {"fixup_riscv_branch", 0, 32, MCFixupKindInfo::FKF_IsPCRel},
       {"fixup_riscv_rvc_jump", 2, 11, MCFixupKindInfo::FKF_IsPCRel},
       {"fixup_riscv_rvc_branch", 0, 16, MCFixupKindInfo::FKF_IsPCRel},
+      {"fixup_riscv_cramp_branch", 0, 16, MCFixupKindInfo::FKF_IsPCRel},
       {"fixup_riscv_call", 0, 64, MCFixupKindInfo::FKF_IsPCRel},
       {"fixup_riscv_call_plt", 0, 64, MCFixupKindInfo::FKF_IsPCRel},
       {"fixup_riscv_relax", 0, 0, 0},
@@ -162,6 +163,10 @@ bool RISCVAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
     // For compressed jump instructions the immediate must be
     // in the range [-2048, 2046].
     return Offset > 2046 || Offset < -2048;
+  case RISCV::fixup_riscv_cramp_branch:
+    // For cramp branch instructions the immediate must be
+    // in the range [-32, 30].
+    return Offset > 30 || Offset < -32;
   }
 }
 
@@ -171,6 +176,8 @@ void RISCVAsmBackend::relaxInstruction(MCInst &Inst,
   switch (Inst.getOpcode()) {
   default:
     llvm_unreachable("Opcode not expected!");
+  case RISCV::C_BEQ:
+  case RISCV::C_BNE:
   case RISCV::C_BEQZ:
   case RISCV::C_BNEZ:
   case RISCV::C_J:
@@ -318,6 +325,10 @@ unsigned RISCVAsmBackend::getRelaxedOpcode(unsigned Op) const {
   switch (Op) {
   default:
     return Op;
+  case RISCV::C_BEQ:
+    return RISCV::BEQ;
+  case RISCV::C_BNE:
+    return RISCV::BNE;
   case RISCV::C_BEQZ:
     return RISCV::BEQ;
   case RISCV::C_BNEZ:
@@ -469,6 +480,12 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
     unsigned Bit2_1 = (Value >> 1) & 0x3;
     Value = (Bit8 << 12) | (Bit4_3 << 10) | (Bit7_6 << 5) | (Bit2_1 << 3) |
             (Bit5 << 2);
+    return Value;
+  }
+  case RISCV::fixup_riscv_cramp_branch: {
+    unsigned Bit5_3 = (Value >> 3) & 0x7;
+    unsigned Bit2_1 = (Value >> 1) & 0x3;
+    Value = (Bit5_3 << 10) | (Bit2_1 << 5);
     return Value;
   }
 

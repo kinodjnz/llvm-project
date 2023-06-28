@@ -317,6 +317,15 @@ static DecodeStatus decodeSImmNonZeroOperand(MCInst &Inst, uint64_t Imm,
 }
 
 template <unsigned N>
+static DecodeStatus decodeSImmNot0Nor4Operand(MCInst &Inst, uint64_t Imm,
+                                              int64_t Address,
+                                              const MCDisassembler *Decoder) {
+  if (Imm == 0 || Imm == 4)
+    return MCDisassembler::Fail;
+  return decodeSImmOperand<N>(Inst, Imm, Address, Decoder);
+}
+
+template <unsigned N>
 static DecodeStatus decodeSImmOperandAndLsl1(MCInst &Inst, uint64_t Imm,
                                              int64_t Address,
                                              const MCDisassembler *Decoder) {
