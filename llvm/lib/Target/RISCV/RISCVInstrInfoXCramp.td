@@ -92,6 +92,24 @@ def simm6_lsb0 : Operand<OtherVT>,
   let OperandType = "OPERAND_PCREL";
 }
 
+class UImm8Operand : Operand<XLenVT>,
+                     ImmLeaf<XLenVT, [{return isUInt<8>(Imm);}]> {
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeUImmOperand<8>";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isUInt<8>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
+  let OperandType = "OPERAND_UIMM8";
+  let OperandNamespace = "RISCVOp";
+}
+
+def uimm8_auipc : UImm8Operand {
+  let ParserMatchClass = UImmAsmOperand<8, "C_AUIPC">;
+}
+
 //===----------------------------------------------------------------------===//
 // Instruction Class Templates
 //===----------------------------------------------------------------------===//
@@ -293,9 +311,16 @@ def C_SLTU : RVInst16CCR3<0b111, 0b11, 0b10, (outs GPRC:$rd), (ins GPRC:$rs1, GP
              Sched<[WriteIALU, ReadIALU]>;
 }
 
-let DecoderNamespace = "Cramp" in {
+let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp] in {
 def C_BEQ : CBranch2<0b100, "c.beq">, Sched<[WriteJmp]>;
 def C_BNE : CBranch2<0b101, "c.bne">, Sched<[WriteJmp]>;
+}
+
+let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp],
+    hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+def C_AUIPC : RVInst16CIW<0b111, 0b00, (outs GPRC:$rd), (ins uimm8_auipc:$imm),
+                          "c.auipc", "$rd, $imm">, Sched<[WriteIALU]> {
+  let Inst{12-5} = imm{7-0};
 }
 
 let Predicates = [HasVendorXCramp, HasStdExtMOrZmmul] in{
@@ -378,6 +403,11 @@ def : CompressPat<(BEQ GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm),
                   (C_BEQ GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm)>;
 def : CompressPat<(BNE GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm),
                   (C_BNE GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm)>;
+}// Predicates = [HasVendorXCramp]
+
+let Predicates = [HasVendorXCramp] in{
+def : CompressPat<(AUIPC GPRC:$rd, uimm8_auipc:$imm),
+                  (C_AUIPC GPRC:$rd, uimm8_auipc:$imm)>;
 }// Predicates = [HasVendorXCramp]
 
 //===----------------------------------------------------------------------===//

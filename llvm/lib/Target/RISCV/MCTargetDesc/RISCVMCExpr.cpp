@@ -81,6 +81,7 @@ const MCFixup *RISCVMCExpr::getPCRelHiFixup(const MCFragment **DFOut) const {
     case RISCV::fixup_riscv_tls_got_hi20:
     case RISCV::fixup_riscv_tls_gd_hi20:
     case RISCV::fixup_riscv_pcrel_hi20:
+    case RISCV::fixup_riscv_pcrel_hi8:
       if (DFOut)
         *DFOut = DF;
       return &F;

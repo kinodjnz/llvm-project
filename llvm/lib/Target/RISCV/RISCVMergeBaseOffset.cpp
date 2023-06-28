@@ -88,12 +88,12 @@ INITIALIZE_PASS(RISCVMergeBaseOffsetOpt, DEBUG_TYPE,
 //    3) The offset value in the Global Address or Constant Pool is 0.
 bool RISCVMergeBaseOffsetOpt::detectFoldable(MachineInstr &Hi,
                                              MachineInstr *&Lo) {
-  if (Hi.getOpcode() != RISCV::LUI && Hi.getOpcode() != RISCV::AUIPC)
+  if (Hi.getOpcode() != RISCV::LUI && Hi.getOpcode() != RISCV::AUIPC && Hi.getOpcode() != RISCV::C_AUIPC)
     return false;
 
   const MachineOperand &HiOp1 = Hi.getOperand(1);
   unsigned ExpectedFlags =
-      Hi.getOpcode() == RISCV::AUIPC ? RISCVII::MO_PCREL_HI : RISCVII::MO_HI;
+      Hi.getOpcode() == RISCV::AUIPC || Hi.getOpcode() == RISCV::C_AUIPC ? RISCVII::MO_PCREL_HI : RISCVII::MO_HI;
   if (HiOp1.getTargetFlags() != ExpectedFlags)
     return false;
 
@@ -114,7 +114,7 @@ bool RISCVMergeBaseOffsetOpt::detectFoldable(MachineInstr &Hi,
         !(LoOp2.isGlobal() || LoOp2.isCPI()) || LoOp2.getOffset() != 0)
       return false;
   } else {
-    assert(Hi.getOpcode() == RISCV::AUIPC);
+    assert(Hi.getOpcode() == RISCV::AUIPC || Hi.getOpcode() == RISCV::C_AUIPC);
     if (LoOp2.getTargetFlags() != RISCVII::MO_PCREL_LO ||
         LoOp2.getType() != MachineOperand::MO_MCSymbol)
       return false;
@@ -140,7 +140,7 @@ void RISCVMergeBaseOffsetOpt::foldOffset(MachineInstr &Hi, MachineInstr &Lo,
   assert(isInt<32>(Offset) && "Unexpected offset");
   // Put the offset back in Hi and the Lo
   Hi.getOperand(1).setOffset(Offset);
-  if (Hi.getOpcode() != RISCV::AUIPC)
+  if (Hi.getOpcode() != RISCV::AUIPC && Hi.getOpcode() != RISCV::C_AUIPC)
     Lo.getOperand(2).setOffset(Offset);
   // Delete the tail instruction.
   MRI->replaceRegWith(Tail.getOperand(0).getReg(), Lo.getOperand(0).getReg());
@@ -410,7 +410,7 @@ bool RISCVMergeBaseOffsetOpt::foldIntoMemoryOps(MachineInstr &Hi,
 
   Hi.getOperand(1).setOffset(NewOffset);
   MachineOperand &ImmOp = Lo.getOperand(2);
-  if (Hi.getOpcode() != RISCV::AUIPC)
+  if (Hi.getOpcode() != RISCV::AUIPC && Hi.getOpcode() != RISCV::C_AUIPC)
     ImmOp.setOffset(NewOffset);
 
   // Update the immediate in the load/store instructions to add the offset.

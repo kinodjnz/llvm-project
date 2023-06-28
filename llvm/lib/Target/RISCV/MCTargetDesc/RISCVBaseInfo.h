@@ -48,7 +48,8 @@ enum {
   InstFormatCCR2 = 19,
   InstFormatCCR3 = 20,
   InstFormatCCB  = 21,
-  InstFormatOther = 22,
+  InstFormatCCP  = 22,
+  InstFormatOther = 23,
 
   InstFormatMask = 31,
   InstFormatShift = 0,
@@ -246,6 +247,7 @@ enum OperandType : unsigned {
   OPERAND_UIMM5_LSB0,
   OPERAND_UIMM7,
   OPERAND_UIMM7_LSB00,
+  OPERAND_UIMM8,
   OPERAND_UIMM8_LSB00,
   OPERAND_UIMM8_LSB000,
   OPERAND_UIMM12,

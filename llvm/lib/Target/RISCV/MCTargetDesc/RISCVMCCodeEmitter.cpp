@@ -310,7 +310,10 @@ unsigned RISCVMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
       RelaxCandidate = true;
       break;
     case RISCVMCExpr::VK_RISCV_PCREL_HI:
-      FixupKind = RISCV::fixup_riscv_pcrel_hi20;
+      if (MIFrm == RISCVII::InstFormatCIW)
+        FixupKind = RISCV::fixup_riscv_pcrel_hi8;
+      else
+        FixupKind = RISCV::fixup_riscv_pcrel_hi20;
       RelaxCandidate = true;
       break;
     case RISCVMCExpr::VK_RISCV_GOT_HI:

@@ -794,6 +794,28 @@ public:
     }
   }
 
+  bool isUImm8C_AUIPC() const {
+    RISCVMCExpr::VariantKind VK = RISCVMCExpr::VK_RISCV_None;
+    int64_t Imm;
+    bool IsValid;
+    if (!isImm())
+      return false;
+    bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
+    if (!IsConstantImm) {
+      IsValid = RISCVAsmParser::classifySymbolRef(getImm(), VK);
+      return IsValid && (VK == RISCVMCExpr::VK_RISCV_PCREL_HI ||
+                         VK == RISCVMCExpr::VK_RISCV_GOT_HI ||
+                         VK == RISCVMCExpr::VK_RISCV_TLS_GOT_HI ||
+                         VK == RISCVMCExpr::VK_RISCV_TLS_GD_HI);
+    } else {
+      return isUInt<8>(Imm) && (VK == RISCVMCExpr::VK_RISCV_None ||
+                                 VK == RISCVMCExpr::VK_RISCV_PCREL_HI ||
+                                 VK == RISCVMCExpr::VK_RISCV_GOT_HI ||
+                                 VK == RISCVMCExpr::VK_RISCV_TLS_GOT_HI ||
+                                 VK == RISCVMCExpr::VK_RISCV_TLS_GD_HI);
+    }
+  }
+
   bool isSImm21Lsb0JAL() const { return isBareSimmNLsb0<21>(); }
 
   bool isImmZero() const {

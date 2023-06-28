@@ -52,7 +52,8 @@ def InstFormatCCS0   : InstFormat<18>;
 def InstFormatCCR2   : InstFormat<19>;
 def InstFormatCCR3   : InstFormat<20>;
 def InstFormatCCB    : InstFormat<21>;
-def InstFormatOther  : InstFormat<22>;
+def InstFormatCCP    : InstFormat<22>;
+def InstFormatOther  : InstFormat<23>;
 
 class RISCVVConstraint<bits<3> val> {
   bits<3> Value = val;

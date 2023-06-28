@@ -151,7 +151,7 @@ static Expected<const Edge &> getRISCVPCRelHi20(const Edge &E) {
       std::equal_range(B.edges().begin(), B.edges().end(), Offset, Comp{});
 
   for (auto It = Bound.first; It != Bound.second; ++It) {
-    if (It->getKind() == R_RISCV_PCREL_HI20)
+    if (It->getKind() == R_RISCV_PCREL_HI20 || It->getKind() == R_RISCV_PCREL_HI8)
       return *It;
   }
 

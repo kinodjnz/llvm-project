@@ -569,7 +569,8 @@ static Relocation *getRISCVPCRelHi20(const Symbol *sym, uint64_t addend) {
 
   for (auto it = range.first; it != range.second; ++it)
     if (it->type == R_RISCV_PCREL_HI20 || it->type == R_RISCV_GOT_HI20 ||
-        it->type == R_RISCV_TLS_GD_HI20 || it->type == R_RISCV_TLS_GOT_HI20)
+        it->type == R_RISCV_TLS_GD_HI20 || it->type == R_RISCV_TLS_GOT_HI20 ||
+        it->type == R_RISCV_PCREL_HI8)
       return &*it;
 
   errorOrWarn("R_RISCV_PCREL_LO12 relocation points to " +

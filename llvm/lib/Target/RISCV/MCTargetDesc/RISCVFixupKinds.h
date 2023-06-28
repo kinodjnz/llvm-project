@@ -23,6 +23,8 @@ enum Fixups {
   fixup_riscv_lo12_s,
   // 20-bit fixup corresponding to %pcrel_hi(foo) for instructions like auipc
   fixup_riscv_pcrel_hi20,
+  // 8-bit fixup corresponding to %pcrel_hi(foo) for instructions like c.auipc
+  fixup_riscv_pcrel_hi8,
   // 12-bit fixup corresponding to %pcrel_lo(foo) for instructions like addi
   fixup_riscv_pcrel_lo12_i,
   // 12-bit fixup corresponding to %pcrel_lo(foo) for the S-type store
