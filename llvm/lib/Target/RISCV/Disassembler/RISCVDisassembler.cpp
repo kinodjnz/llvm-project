@@ -577,6 +577,8 @@ DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
   Size = 2;
 
   Insn = support::endian::read16le(Bytes.data());
+  TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCramp, DecoderTableCramp16,
+                        "Cramp table (16-bit Instructions)");
   TRY_TO_DECODE_AND_ADD_SP(!STI.hasFeature(RISCV::Feature64Bit),
                            DecoderTableRISCV32Only_16,
                            "RISCV32Only_16 table (16-bit Instruction)");

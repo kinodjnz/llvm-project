@@ -803,6 +803,13 @@ def HasVendorXCVmac : Predicate<"Subtarget->hasVendorXCVmac()">,
                                 AssemblerPredicate<(all_of FeatureVendorXCVmac),
                                 "'XCVmac' (CORE-V Multiply-Accumulate)">;
 
+def FeatureVendorXCramp
+    : SubtargetFeature<"xcramp", "HasVendorXCramp", "true",
+                       "'xcramp' (Cramp Instructions)">;
+def HasVendorXCramp : Predicate<"Subtarget->hasVendorXCramp()">,
+                                AssemblerPredicate<(all_of FeatureVendorXCramp),
+                                "'xcramp' (Cramp Instructions)">;
+
 //===----------------------------------------------------------------------===//
 // LLVM specific features and extensions
 //===----------------------------------------------------------------------===//
