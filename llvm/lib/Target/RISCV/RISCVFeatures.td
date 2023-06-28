@@ -1333,6 +1333,13 @@ def HasVendorXqcilo
       AssemblerPredicate<(all_of FeatureVendorXqcilo),
                          "'Xqcilo' (Qualcomm uC Large Offset Load Store Extension)">;
 
+def FeatureVendorXCramp
+    : SubtargetFeature<"xcramp", "HasVendorXCramp", "true",
+                       "'xcramp' (Cramp Instructions)">;
+def HasVendorXCramp : Predicate<"Subtarget->hasVendorXCramp()">,
+                                AssemblerPredicate<(all_of FeatureVendorXCramp),
+                                "'xcramp' (Cramp Instructions)">;
+
 //===----------------------------------------------------------------------===//
 // LLVM specific features and extensions
 //===----------------------------------------------------------------------===//

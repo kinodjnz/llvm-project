@@ -258,14 +258,81 @@ def uimmlog2xlen : RISCVOp, ImmLeaf<XLenVT, [{
     return isUInt<5>(Imm);
   }];
   let OperandType = "OPERAND_UIMMLOG2XLEN";
+  let OperandNamespace = "RISCVOp";
 }
 
-def InsnDirectiveOpcode : AsmOperandClass {
-  let Name = "InsnDirectiveOpcode";
-  let ParserMethod = "parseInsnDirectiveOpcode";
-  let RenderMethod = "addImmOperands";
-  let PredicateMethod = "isImm";
-}
+// def uimm1 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<1>(Imm);}]> {
+//   let ParserMatchClass = UImmAsmOperand<1>;
+//   let DecoderMethod = "decodeUImmOperand<1>";
+//   let OperandType = "OPERAND_UIMM1";
+//   let OperandNamespace = "RISCVOp";
+// }
+
+// def uimm2 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<2>(Imm);}]> {
+//   let ParserMatchClass = UImmAsmOperand<2>;
+//   let DecoderMethod = "decodeUImmOperand<2>";
+//   let OperandType = "OPERAND_UIMM2";
+//   let OperandNamespace = "RISCVOp";
+//   let MCOperandPredicate = [{
+//     int64_t Imm;
+//     if (!MCOp.evaluateAsConstantImm(Imm))
+//       return false;
+//     return isUInt<2>(Imm);
+//   }];
+// }
+
+// def uimm3 : Operand<XLenVT> {
+//   let ParserMatchClass = UImmAsmOperand<3>;
+//   let DecoderMethod = "decodeUImmOperand<3>";
+//   let OperandType = "OPERAND_UIMM3";
+//   let OperandNamespace = "RISCVOp";
+// }
+
+// def uimm4 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<4>(Imm);}]> {
+//   let ParserMatchClass = UImmAsmOperand<4>;
+//   let DecoderMethod = "decodeUImmOperand<4>";
+//   let OperandType = "OPERAND_UIMM4";
+//   let OperandNamespace = "RISCVOp";
+//   let MCOperandPredicate = [{
+//     int64_t Imm;
+//     if (!MCOp.evaluateAsConstantImm(Imm))
+//       return false;
+//     return isUInt<4>(Imm);
+//   }];
+// }
+
+// def uimm5 : Operand<XLenVT>, ImmLeaf<XLenVT, [{return isUInt<5>(Imm);}]> {
+//   let ParserMatchClass = UImmAsmOperand<5>;
+//   let DecoderMethod = "decodeUImmOperand<5>";
+//   let OperandType = "OPERAND_UIMM5";
+//   let OperandNamespace = "RISCVOp";
+//   let MCOperandPredicate = [{
+//     int64_t Imm;
+//     if (!MCOp.evaluateAsConstantImm(Imm))
+//       return false;
+//     return isUInt<5>(Imm);
+//   }];
+// }
+
+// def InsnDirectiveOpcode : AsmOperandClass {
+//   let Name = "InsnDirectiveOpcode";
+//   let ParserMethod = "parseInsnDirectiveOpcode";
+//   let RenderMethod = "addImmOperands";
+//   let PredicateMethod = "isImm";
+// }
+
+// // def uimm1 : RISCVUImmLeafOp<1>;
+// // def uimm2 : RISCVUImmLeafOp<2> {
+// //   let MCOperandPredicate = [{
+// //     int64_t Imm;
+// //     if (!MCOp.evaluateAsConstantImm(Imm))
+// //       return false;
+// //     return isUInt<2>(Imm);
+// //   }];
+// // }
+// // def uimm3 : RISCVUImmOp<3>;
+// // def uimm4 : RISCVUImmOp<4>;
+// // def uimm5 : RISCVUImmLeafOp<5>;
 
 def uimm1 : RISCVUImmLeafOp<1>;
 def uimm2 : RISCVUImmLeafOp<2>;
@@ -2250,6 +2317,7 @@ include "RISCVInstrInfoXCV.td"
 include "RISCVInstrInfoXwch.td"
 include "RISCVInstrInfoXqci.td"
 include "RISCVInstrInfoXMips.td"
+include "RISCVInstrInfoXCramp.td"
 
 //===----------------------------------------------------------------------===//
 // Global ISel
