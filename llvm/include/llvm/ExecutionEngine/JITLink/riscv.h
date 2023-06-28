@@ -76,6 +76,12 @@ enum EdgeKind_riscv : Edge::Kind {
   ///   Fixup <- (Target - Fixup + Addend + 0x800) >> 12
   R_RISCV_PCREL_HI20,
 
+  /// High 8 bits of PC relative relocation
+  ///
+  /// Fixup expression:
+  ///   Fixup <- (Target - Fixup + Addend + 0x800) >> 12
+  R_RISCV_PCREL_HI8,
+
   /// Low 12 bits of PC relative relocation, used by I type instruction format
   ///
   /// Fixup expression:

@@ -285,6 +285,7 @@ RelExpr RISCV::getRelExpr(const RelType type, const Symbol &s,
   case R_RISCV_JAL:
   case R_RISCV_BRANCH:
   case R_RISCV_PCREL_HI20:
+  case R_RISCV_PCREL_HI8:
   case R_RISCV_RVC_BRANCH:
   case R_RISCV_RVC_JUMP:
   case R_RISCV_CRAMP_BRANCH:
@@ -374,8 +375,8 @@ void RISCV::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   }
 
   case R_RISCV_CRAMP_BRANCH: {
-    checkInt(loc, val, 6, rel);
-    checkAlignment(loc, val, 2, rel);
+    checkInt(ctx, loc, val, 6, rel);
+    checkAlignment(ctx, loc, val, 2, rel);
     uint16_t insn = read16le(loc) & 0xE39F;
     uint16_t imm5_3 = extractBits(val, 5, 3) << 10;
     uint16_t imm2_1 = extractBits(val, 2, 1) << 5;
@@ -387,7 +388,7 @@ void RISCV::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
 
   case R_RISCV_RVC_LUI: {
     int64_t imm = SignExtend64(val + 0x800, bits) >> 12;
-    checkInt(loc, imm, 6, rel);
+    checkInt(ctx, loc, imm, 6, rel);
     if (imm == 0) { // `c.lui rd, 0` is illegal, convert to `c.li rd, 0`
       write16le(loc, (read16le(loc) & 0x0F83) | 0x4000);
     } else {
@@ -450,6 +451,13 @@ void RISCV::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
     uint64_t hi = val + 0x800;
     checkInt(ctx, loc, SignExtend64(hi, bits) >> 12, 20, rel);
     write32le(loc, (read32le(loc) & 0xFFF) | (hi & 0xFFFFF000));
+    return;
+  }
+
+  case R_RISCV_PCREL_HI8: {
+    uint64_t hi = val + 0x800;
+    checkInt(ctx, loc, SignExtend64(hi, bits) >> 12, 8, rel);
+    write16le(loc, (read16le(loc) & 0xE01F) | ((hi & 0x000FF000) >> 7));
     return;
   }
 
@@ -767,6 +775,24 @@ static void relaxCall(Ctx &ctx, const InputSection &sec, size_t i, uint64_t loc,
   }
 }
 
+// Relax R_RISCV_PCREL_HI20 to c.auipc
+static void relaxAuipc(Ctx &ctx, const InputSection &sec, size_t i, uint64_t loc,
+                      Relocation &r, uint32_t &remove) {
+  const bool rvc = getEFlags(ctx, sec.file) & EF_RISCV_RVC;
+  const Symbol &sym = *r.sym;
+  const uint32_t insn = read32le(sec.content().data() + r.offset);
+  const uint32_t rd = extractBits(insn, 11, 7);
+  const uint64_t dest =
+      (r.expr == R_PLT_PC ? sym.getPltVA(ctx) : sym.getVA(ctx)) + r.addend;
+  const int64_t displace = dest - loc;
+
+  if (rvc && isUInt<8>((displace + 0x800) >> 12) && 8 <= rd && rd < 16) {
+    sec.relaxAux->relocTypes[i] = R_RISCV_PCREL_HI8;
+    sec.relaxAux->writes.push_back(0xE000 | ((rd - 8) << 2)); // c.auipc
+    remove = 2;
+  }
+}
+
 // Relax local-exec TLS when hi20 is zero.
 static void relaxTlsLe(Ctx &ctx, const InputSection &sec, size_t i,
                        uint64_t loc, Relocation &r, uint32_t &remove) {
@@ -884,6 +910,11 @@ static bool relax(Ctx &ctx, InputSection &sec) {
     case R_RISCV_TLSDESC_ADD_LO12:
       if (toLeShortForm)
         remove = 4;
+      break;
+    case R_RISCV_PCREL_HI20:
+      if (i + 1 != sec.relocs().size() &&
+          sec.relocs()[i + 1].type == R_RISCV_RELAX)
+        relaxAuipc(ctx, sec, i, loc, r, remove);
       break;
     }
 
@@ -1018,6 +1049,10 @@ void RISCV::finalizeRelax(int passes) const {
             skip = 4;
             write32le(p, aux.writes[writesIdx++]);
             aux.relocTypes[i] = R_RISCV_NONE;
+            break;
+          case R_RISCV_PCREL_HI8:
+            skip = 2;
+            write16le(p, aux.writes[writesIdx++]);
             break;
           default:
             llvm_unreachable("unsupported type");

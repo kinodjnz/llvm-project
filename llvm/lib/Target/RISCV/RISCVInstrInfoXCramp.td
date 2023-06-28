@@ -501,6 +501,11 @@ def : CompressPat<(BNE GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm),
                   (C_BNE GPRC:$rs1, GPRC:$rs2, simm6_lsb0:$imm)>;
 }// Predicates = [HasVendorXCramp]
 
+let Predicates = [HasVendorXCramp] in{
+def : CompressPat<(AUIPC GPRC:$rd, uimm8_auipc:$imm),
+                  (C_AUIPC GPRC:$rd, uimm8_auipc:$imm)>;
+}// Predicates = [HasVendorXCramp]
+
 //===----------------------------------------------------------------------===//
 // Pseudo Instructions
 //===----------------------------------------------------------------------===//
