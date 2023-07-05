@@ -50,6 +50,9 @@ def SDT_RISCVAlignedBzero4 : SDTypeProfile<0, 2, [
 def SDT_RISCVAlignedMemcpy4 : SDTypeProfile<0, 3, [
   SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
 ]>;
+def SDT_RISCVAlignedMemcpy4Vsize : SDTypeProfile<0, 3, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
+]>;
 
 // Target-independent nodes, but with target-specific formats.
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_CallSeqStart,
@@ -109,6 +112,9 @@ def riscv_aligned_bzero4 : SDNode<"RISCVISD::ALIGNED_BZERO4",
                                   [SDNPHasChain, SDNPMayStore]>;
 def riscv_aligned_memcpy4 : SDNode<"RISCVISD::ALIGNED_MEMCPY4",
                                    SDT_RISCVAlignedMemcpy4,
+                                   [SDNPHasChain, SDNPMayStore]>;
+def riscv_aligned_memcpy4_vsize : SDNode<"RISCVISD::ALIGNED_MEMCPY4_VSIZE",
+                                   SDT_RISCVAlignedMemcpy4Vsize,
                                    [SDNPHasChain, SDNPMayStore]>;
 
 //===----------------------------------------------------------------------===//
@@ -1880,6 +1886,9 @@ def AlignedBzero4 : Pseudo<(outs), (ins GPR:$dst, GPR:$lst), [(riscv_aligned_bze
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
 def AlignedMemcpy4 : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4 GPR:$dst, GPR:$src, GPR:$srclst)]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedMemcpy4Vsize : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4_vsize GPR:$dst, GPR:$src, GPR:$srclst)]>;
 
 //===----------------------------------------------------------------------===//
 // Standard extensions

@@ -11760,6 +11760,133 @@ static MachineBasicBlock *emitAlignedMemcpy4Pseudo(MachineInstr &MI,
   return DoneMBB;
 }
 
+static MachineBasicBlock *emitAlignedMemcpy4VsizePseudo(MachineInstr &MI,
+                                                   MachineBasicBlock *BB) {
+  assert(MI.getOpcode() == RISCV::AlignedMemcpy4Vsize && "Unexpected instruction");
+
+  MachineFunction &MF = *BB->getParent();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineFunction::iterator It = ++BB->getIterator();
+
+  MachineBasicBlock *EntryMBB = BB;
+  MachineBasicBlock *FirstMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, FirstMBB);
+  MachineBasicBlock *LoopWordMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, LoopWordMBB);
+  MachineBasicBlock *LoopByteMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, LoopByteMBB);
+  MachineBasicBlock *DoneMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, DoneMBB);
+
+  // Transfer the remainder of BB and its successor edges to DoneMBB.
+  DoneMBB->splice(DoneMBB->begin(), EntryMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), EntryMBB->end());
+  DoneMBB->transferSuccessorsAndUpdatePHIs(EntryMBB);
+
+  EntryMBB->addSuccessor(FirstMBB);
+
+  MachineRegisterInfo &RegInfo = MF.getRegInfo();
+  Register CurrDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register NextDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register CurrSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register NextSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register CurrByteDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register NextByteDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register CurrByteSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register NextByteSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register TransferReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register TransferByteReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register SrcLstWordReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
+  Register Dst = MI.getOperand(0).getReg();
+  Register Src = MI.getOperand(1).getReg();
+  Register SrcLst = MI.getOperand(2).getReg();
+  DebugLoc DL = MI.getDebugLoc();
+
+  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+
+  BuildMI(FirstMBB, DL, TII->get(RISCV::BEQ))
+      .addUse(Src)
+      .addUse(SrcLst)
+      .addMBB(DoneMBB);
+  BuildMI(FirstMBB, DL, TII->get(RISCV::ANDI), SrcLstWordReg)
+      .addUse(Src)
+      .addImm(-4);
+
+  FirstMBB->addSuccessor(LoopWordMBB);
+  FirstMBB->addSuccessor(DoneMBB);
+
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrDstReg)
+      .addUse(Dst)
+      .addMBB(FirstMBB)
+      .addUse(NextDstReg)
+      .addMBB(LoopWordMBB);
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrSrcReg)
+      .addUse(Src)
+      .addMBB(FirstMBB)
+      .addUse(NextSrcReg)
+      .addMBB(LoopWordMBB);
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::LW), TransferReg)
+      .addUse(CurrSrcReg)
+      .addImm(0);
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextSrcReg)
+      .addUse(CurrSrcReg)
+      .addImm(4);
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::SW))
+      .addUse(TransferReg)
+      .addUse(CurrDstReg)
+      .addImm(0);
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextDstReg)
+      .addUse(CurrDstReg)
+      .addImm(4);
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::BNE))
+      .addUse(NextSrcReg)
+      .addUse(SrcLstWordReg)
+      .addMBB(LoopWordMBB);
+  BuildMI(LoopWordMBB, DL, TII->get(RISCV::BEQ))
+      .addUse(NextSrcReg)
+      .addUse(SrcLst)
+      .addMBB(DoneMBB);
+
+  LoopWordMBB->addSuccessor(LoopWordMBB);
+  LoopWordMBB->addSuccessor(LoopByteMBB);
+  LoopWordMBB->addSuccessor(DoneMBB);
+
+  BuildMI(LoopByteMBB, DL, TII->get(RISCV::PHI), CurrByteDstReg)
+      .addUse(NextDstReg)
+      .addMBB(LoopWordMBB)
+      .addUse(NextByteDstReg)
+      .addMBB(LoopByteMBB);
+  BuildMI(LoopByteMBB, DL, TII->get(RISCV::PHI), CurrByteSrcReg)
+      .addUse(NextSrcReg)
+      .addMBB(LoopWordMBB)
+      .addUse(NextByteSrcReg)
+      .addMBB(LoopByteMBB);
+  BuildMI(LoopByteMBB, DL, TII->get(RISCV::LBU), TransferByteReg)
+      .addUse(CurrByteSrcReg)
+      .addImm(0);
+  BuildMI(LoopByteMBB, DL, TII->get(RISCV::ADDI), NextByteSrcReg)
+      .addUse(CurrByteSrcReg)
+      .addImm(1);
+  BuildMI(LoopByteMBB, DL, TII->get(RISCV::SB))
+      .addUse(TransferByteReg)
+      .addUse(CurrByteDstReg)
+      .addImm(0);
+  BuildMI(LoopByteMBB, DL, TII->get(RISCV::ADDI), NextByteDstReg)
+      .addUse(CurrByteDstReg)
+      .addImm(1);
+  BuildMI(LoopByteMBB, DL, TII->get(RISCV::BNE))
+      .addUse(NextByteSrcReg)
+      .addUse(SrcLst)
+      .addMBB(LoopByteMBB);
+
+  LoopByteMBB->addSuccessor(LoopByteMBB);
+  LoopByteMBB->addSuccessor(DoneMBB);
+
+  MI.eraseFromParent();
+
+  return DoneMBB;
+}
+
 MachineBasicBlock *
 RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
@@ -11979,6 +12106,8 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return emitAlignedBzero4Pseudo(MI, BB);
   case RISCV::AlignedMemcpy4:
     return emitAlignedMemcpy4Pseudo(MI, BB);
+  case RISCV::AlignedMemcpy4Vsize:
+    return emitAlignedMemcpy4VsizePseudo(MI, BB);
   }
 }
 
@@ -13591,6 +13720,7 @@ const char *RISCVTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(SWAP_CSR)
   NODE_NAME_CASE(ALIGNED_BZERO4)
   NODE_NAME_CASE(ALIGNED_MEMCPY4)
+  NODE_NAME_CASE(ALIGNED_MEMCPY4_VSIZE)
   }
   // clang-format on
   return nullptr;

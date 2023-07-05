@@ -34,6 +34,18 @@ static bool shouldGenerateAlignedMemcpy4(SelectionDAG &DAG,
   return true;
 }
 
+static bool shouldGenerateAlignedMemcpy4Vsize(SelectionDAG &DAG, Align Alignment) {
+
+  auto &F = DAG.getMachineFunction().getFunction();
+
+  if (F.hasOptNone())
+    return false;
+  if (!((Alignment.value() & 3) == 0))
+    return false;
+
+  return true;
+}
+
 SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemcpy(
     SelectionDAG &DAG, const SDLoc &dl, SDValue Chain, SDValue Dst, SDValue Src,
     SDValue Size, Align Alignment, bool isVolatile, bool AlwaysInline,
@@ -42,6 +54,9 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemcpy(
 
   if (!AlwaysInline && shouldGenerateAlignedMemcpy4(DAG, ConstantSize, Alignment))
     return DAG.getNode(RISCVISD::ALIGNED_MEMCPY4, dl, MVT::Other, Chain, Dst, Src,
+                       DAG.getMemBasePlusOffset(Src, DAG.getZExtOrTrunc(Size, dl, MVT::i32), dl));
+  if (!AlwaysInline && shouldGenerateAlignedMemcpy4Vsize(DAG, Alignment))
+    return DAG.getNode(RISCVISD::ALIGNED_MEMCPY4_VSIZE, dl, MVT::Other, Chain, Dst, Src,
                        DAG.getMemBasePlusOffset(Src, DAG.getZExtOrTrunc(Size, dl, MVT::i32), dl));
 
   return SDValue();

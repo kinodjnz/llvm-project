@@ -326,6 +326,7 @@ enum NodeType : unsigned {
   // Inline aligned bzero and memcpy.
   ALIGNED_BZERO4,
   ALIGNED_MEMCPY4,
+  ALIGNED_MEMCPY4_VSIZE,
 
   // FP to 32 bit int conversions for RV64. These are used to keep track of the
   // result being sign extended to 64 bit. These saturate out of range inputs.
