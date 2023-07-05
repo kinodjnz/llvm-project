@@ -378,6 +378,7 @@ enum NodeType : unsigned {
   // Inline aligned bzero and memcpy.
   ALIGNED_BZERO4,
   ALIGNED_MEMCPY4,
+  ALIGNED_MEMCPY4_VSIZE,
 
   // Branchless select operations, matching the semantics of the instructions
   // defined in Zicond or XVentanaCondOps.
