@@ -180,8 +180,8 @@ bool RISCVAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
     return Offset > 30 || Offset < -32;
   case RISCV::fixup_riscv_pcrel_hi8:
     // For cramp auipc instructions the immediate must be
-    // in the range [-0x80000, 0x7f000].
-    return Offset > 0x7f000 || Offset < -0x80000;
+    // in the range [-0x800, 0xff800].
+    return Offset >= 0xff800 || Offset < -0x800;
   }
 }
 

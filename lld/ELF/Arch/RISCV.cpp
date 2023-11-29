@@ -645,7 +645,7 @@ static void relaxAuipc(const InputSection &sec, size_t i, uint64_t loc,
       (r.expr == R_PLT_PC ? sym.getPltVA() : sym.getVA()) + r.addend;
   const int64_t displace = dest - loc;
 
-  if (rvc && isInt<8>(displace >> 12) && 8 <= rd && rd < 16) {
+  if (rvc && isUInt<8>((displace + 0x800) >> 12) && 8 <= rd && rd < 16) {
     sec.relaxAux->relocTypes[i] = R_RISCV_PCREL_HI8;
     sec.relaxAux->writes.push_back(0xE000 | ((rd - 8) << 2)); // c.auipc
     remove = 2;
