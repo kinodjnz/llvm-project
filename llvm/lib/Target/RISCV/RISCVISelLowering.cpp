@@ -14593,7 +14593,7 @@ static MachineBasicBlock *emitAlignedMemcpy4VsizePseudo(MachineInstr &MI,
       .addUse(SrcLst)
       .addMBB(DoneMBB);
   BuildMI(FirstMBB, DL, TII->get(RISCV::ANDI), SrcLstWordReg)
-      .addUse(Src)
+      .addUse(SrcLst)
       .addImm(-4);
 
   FirstMBB->addSuccessor(LoopWordMBB);
