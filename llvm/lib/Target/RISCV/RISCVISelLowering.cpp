@@ -14430,6 +14430,8 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
   MachineBasicBlock *EntryMBB = BB;
   MachineBasicBlock *LoopMBB = MF.CreateMachineBasicBlock(LLVM_BB);
   MF.insert(It, LoopMBB);
+  MachineBasicBlock *RemainderMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, RemainderMBB);
   MachineBasicBlock *DoneMBB = MF.CreateMachineBasicBlock(LLVM_BB);
   MF.insert(It, DoneMBB);
 
@@ -14445,6 +14447,7 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
   Register NextDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
   Register Dst = MI.getOperand(0).getReg();
   Register Lst = MI.getOperand(1).getReg();
+  int64_t Size = MI.getOperand(2).getImm();
   DebugLoc DL = MI.getDebugLoc();
 
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
@@ -14466,8 +14469,30 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
       .addReg(Lst)
       .addMBB(LoopMBB);
 
+  if ((Size & 3) == 1) {
+    BuildMI(RemainderMBB, DL, TII->get(RISCV::SB))
+        .addReg(RISCV::X0)
+        .addReg(NextDstReg)
+        .addImm(0);
+  } else if ((Size & 3) == 2) {
+    BuildMI(RemainderMBB, DL, TII->get(RISCV::SH))
+        .addReg(RISCV::X0)
+        .addReg(NextDstReg)
+        .addImm(0);
+  } else if ((Size & 3) == 3) {
+    BuildMI(RemainderMBB, DL, TII->get(RISCV::SH))
+        .addReg(RISCV::X0)
+        .addReg(NextDstReg)
+        .addImm(0);
+    BuildMI(RemainderMBB, DL, TII->get(RISCV::SB))
+        .addReg(RISCV::X0)
+        .addReg(NextDstReg)
+        .addImm(2);
+  }
+
   LoopMBB->addSuccessor(LoopMBB);
-  LoopMBB->addSuccessor(DoneMBB);
+  LoopMBB->addSuccessor(RemainderMBB);
+  RemainderMBB->addSuccessor(DoneMBB);
 
   MI.eraseFromParent();
 

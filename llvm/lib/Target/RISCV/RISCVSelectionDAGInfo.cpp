@@ -71,7 +71,7 @@ static bool shouldGenerateAlignedBzero4(SelectionDAG &DAG,
     return false;
   if (!(ConstantSrc && ConstantSrc->getZExtValue() == 0))
     return false;
-  if (!(ConstantSize && ConstantSize->getZExtValue() > 0 && (ConstantSize->getZExtValue() & 3) == 0))
+  if (!(ConstantSize && ConstantSize->getZExtValue() > 0 /*&& (ConstantSize->getZExtValue() & 3) == 0*/))
     return false;
   if (!((Alignment.value() & 3) == 0))
     return false;
@@ -87,9 +87,14 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemset(
   ConstantSDNode *ConstantSrc = dyn_cast<ConstantSDNode>(Src);
   ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
 
-  if (!AlwaysInline && shouldGenerateAlignedBzero4(DAG, ConstantSrc, ConstantSize, Alignment))
+  if (!AlwaysInline && shouldGenerateAlignedBzero4(DAG, ConstantSrc, ConstantSize, Alignment)) {
+    SDValue SizeValue = DAG.getZExtOrTrunc(Size, dl, MVT::i32);
+    EVT SizeVT = SizeValue.getValueType();
+    SDValue TruncatedSizeValue = DAG.getNode(ISD::AND, dl, SizeVT, SizeValue, DAG.getConstant(APInt::getHighBitsSet(SizeVT.getScalarSizeInBits(), SizeVT.getScalarSizeInBits() - 2), dl, SizeVT));
     return DAG.getNode(RISCVISD::ALIGNED_BZERO4, dl, MVT::Other, Chain, Dst,
-                       DAG.getMemBasePlusOffset(Dst, DAG.getZExtOrTrunc(Size, dl, MVT::i32), dl));
+                       DAG.getMemBasePlusOffset(Dst, TruncatedSizeValue, dl),
+                       DAG.getZExtOrTrunc(Size, dl, MVT::i32));
+  }
 
   return SDValue();
 }

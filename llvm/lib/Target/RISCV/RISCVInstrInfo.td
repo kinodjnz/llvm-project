@@ -44,8 +44,8 @@ def SDT_RISCVIntBinOpW : SDTypeProfile<1, 2, [
 def SDT_RISCVIntShiftDOpW : SDTypeProfile<1, 3, [
   SDTCisSameAs<0, 1>, SDTCisSameAs<0, 2>, SDTCisVT<0, i64>, SDTCisVT<3, i64>
 ]>;
-def SDT_RISCVAlignedBzero4 : SDTypeProfile<0, 2, [
-  SDTCisPtrTy<0>, SDTCisPtrTy<1>
+def SDT_RISCVAlignedBzero4 : SDTypeProfile<0, 3, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisInt<2>
 ]>;
 def SDT_RISCVAlignedMemcpy4 : SDTypeProfile<0, 3, [
   SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
@@ -1960,7 +1960,7 @@ def : Pat<(binop_allwusers<add> GPR:$rs1, (AddiPair:$rs2)),
 }
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
-def AlignedBzero4 : Pseudo<(outs), (ins GPR:$dst, GPR:$lst), [(riscv_aligned_bzero4 GPR:$dst, GPR:$lst)]>;
+def AlignedBzero4 : Pseudo<(outs), (ins GPR:$dst, GPR:$lst, i32imm:$size), [(riscv_aligned_bzero4 GPR:$dst, GPR:$lst, (i32 imm:$size))]>;
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
 def AlignedMemcpy4 : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4 GPR:$dst, GPR:$src, GPR:$srclst)]>;
