@@ -377,6 +377,7 @@ enum NodeType : unsigned {
   SWAP_CSR,
   // Inline aligned bzero and memcpy.
   ALIGNED_BZERO4,
+  ALIGNED_FIXED_SMALL_MEMMOVE,
   ALIGNED_MEMCPY4,
   ALIGNED_MEMCPY4_VSIZE,
 

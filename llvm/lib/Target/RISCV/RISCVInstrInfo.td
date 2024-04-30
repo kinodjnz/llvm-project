@@ -47,6 +47,9 @@ def SDT_RISCVIntShiftDOpW : SDTypeProfile<1, 3, [
 def SDT_RISCVAlignedBzero4 : SDTypeProfile<0, 3, [
   SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisInt<2>
 ]>;
+def SDT_RISCVAlignedFixedSmallMemmove : SDTypeProfile<0, 3, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisInt<2>
+]>;
 def SDT_RISCVAlignedMemcpy4 : SDTypeProfile<0, 3, [
   SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
 ]>;
@@ -107,6 +110,9 @@ def riscv_la_tls_gd : SDNode<"RISCVISD::LA_TLS_GD", SDTIntUnaryOp>;
 
 def riscv_aligned_bzero4 : SDNode<"RISCVISD::ALIGNED_BZERO4",
                                   SDT_RISCVAlignedBzero4,
+                                  [SDNPHasChain, SDNPMayStore]>;
+def riscv_aligned_fixed_small_memmove : SDNode<"RISCVISD::ALIGNED_FIXED_SMALL_MEMMOVE",
+                                  SDT_RISCVAlignedFixedSmallMemmove,
                                   [SDNPHasChain, SDNPMayStore]>;
 def riscv_aligned_memcpy4 : SDNode<"RISCVISD::ALIGNED_MEMCPY4",
                                    SDT_RISCVAlignedMemcpy4,
@@ -1961,6 +1967,9 @@ def : Pat<(binop_allwusers<add> GPR:$rs1, (AddiPair:$rs2)),
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
 def AlignedBzero4 : Pseudo<(outs), (ins GPR:$dst, GPR:$lst, i32imm:$size), [(riscv_aligned_bzero4 GPR:$dst, GPR:$lst, (i32 imm:$size))]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedFixedSmallMemmove : Pseudo<(outs), (ins GPR:$dst, GPR:$src, i32imm:$size), [(riscv_aligned_fixed_small_memmove GPR:$dst, GPR:$src, (i32 imm:$size))]>;
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
 def AlignedMemcpy4 : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4 GPR:$dst, GPR:$src, GPR:$srclst)]>;

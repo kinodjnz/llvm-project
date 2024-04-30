@@ -14499,6 +14499,88 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
   return DoneMBB;
 }
 
+static MachineBasicBlock *emitAlignedFixedSmallMemmovePseudo(MachineInstr &MI,
+                                                    MachineBasicBlock *BB) {
+  assert(MI.getOpcode() == RISCV::AlignedFixedSmallMemmove && "Unexpected instruction");
+
+  MachineFunction &MF = *BB->getParent();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineFunction::iterator It = ++BB->getIterator();
+
+  MachineBasicBlock *EntryMBB = BB;
+  MachineBasicBlock *MemmoveMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, MemmoveMBB);
+  MachineBasicBlock *DoneMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, DoneMBB);
+
+  // Transfer the remainder of BB and its successor edges to DoneMBB.
+  DoneMBB->splice(DoneMBB->begin(), EntryMBB,
+                  std::next(MachineBasicBlock::iterator(MI)), EntryMBB->end());
+  DoneMBB->transferSuccessorsAndUpdatePHIs(EntryMBB);
+
+  EntryMBB->addSuccessor(MemmoveMBB);
+
+  MachineRegisterInfo &RegInfo = MF.getRegInfo();
+  std::vector<Register> TempRegs;
+
+  Register Dst = MI.getOperand(0).getReg();
+  Register Src = MI.getOperand(1).getReg();
+  int64_t Size = MI.getOperand(2).getImm();
+  DebugLoc DL = MI.getDebugLoc();
+
+  assert(Size <= 32 && "aligned_fixed_small_memmove does not support size > 32");
+
+  int64_t NumRegs = (Size + 3) / 4 + ((Size & 3) == 3 ? 1 : 0);
+  for (int64_t i = 0; i < NumRegs; i++) {
+    TempRegs.push_back(RegInfo.createVirtualRegister(&RISCV::GPRRegClass));
+  }
+
+  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+
+  int nextReg = 0;
+  for (int64_t i = 0; i < (Size + 3) / 4; i++) {
+    BuildMI(MemmoveMBB, DL, TII->get(RISCV::LW), TempRegs[i])
+        .addUse(Src)
+        .addImm(i * 4);
+  }
+  for (int64_t i = 0; i < Size / 4; i++) {
+    BuildMI(MemmoveMBB, DL, TII->get(RISCV::SW))
+        .addUse(TempRegs[i])
+        .addUse(Dst)
+        .addImm(i * 4);
+  }
+  int64_t last = Size / 4;
+  if ((Size & 3) == 1) {
+    BuildMI(MemmoveMBB, DL, TII->get(RISCV::SB))
+        .addUse(TempRegs[last])
+        .addUse(Dst)
+        .addImm(last * 4);
+  } else if ((Size & 3) == 2) {
+    BuildMI(MemmoveMBB, DL, TII->get(RISCV::SH))
+        .addUse(TempRegs[last])
+        .addUse(Dst)
+        .addImm(last * 4);
+  } else if ((Size & 3) == 3) {
+    BuildMI(MemmoveMBB, DL, TII->get(RISCV::SH))
+        .addUse(TempRegs[last])
+        .addUse(Dst)
+        .addImm(last * 4);
+    BuildMI(MemmoveMBB, DL, TII->get(RISCV::SRLI), TempRegs[last + 1])
+        .addUse(TempRegs[last])
+        .addImm(16);
+    BuildMI(MemmoveMBB, DL, TII->get(RISCV::SB))
+        .addUse(TempRegs[last + 1])
+        .addUse(Dst)
+        .addImm(last * 4 + 2);
+  }
+
+  MemmoveMBB->addSuccessor(DoneMBB);
+
+  MI.eraseFromParent();
+
+  return DoneMBB;
+}
+
 static MachineBasicBlock *emitAlignedMemcpy4Pseudo(MachineInstr &MI,
                                                    MachineBasicBlock *BB) {
   assert(MI.getOpcode() == RISCV::AlignedMemcpy4 && "Unexpected instruction");
@@ -14818,6 +14900,8 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
   case RISCV::AlignedBzero4:
     return emitAlignedBzero4Pseudo(MI, BB);
+  case RISCV::AlignedFixedSmallMemmove:
+    return emitAlignedFixedSmallMemmovePseudo(MI, BB);
   case RISCV::AlignedMemcpy4:
     return emitAlignedMemcpy4Pseudo(MI, BB);
   case RISCV::AlignedMemcpy4Vsize:
@@ -16558,6 +16642,7 @@ const char *RISCVTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(CZERO_EQZ)
   NODE_NAME_CASE(CZERO_NEZ)
   NODE_NAME_CASE(ALIGNED_BZERO4)
+  NODE_NAME_CASE(ALIGNED_FIXED_SMALL_MEMMOVE)
   NODE_NAME_CASE(ALIGNED_MEMCPY4)
   NODE_NAME_CASE(ALIGNED_MEMCPY4_VSIZE)
   }

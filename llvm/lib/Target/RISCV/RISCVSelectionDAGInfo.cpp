@@ -62,6 +62,32 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemcpy(
   return SDValue();
 }
 
+static bool shouldGenerateAlignedFixedSmallMemmove(SelectionDAG &DAG, ConstantSDNode *ConstantSize, Align Alignment) {
+  auto &F = DAG.getMachineFunction().getFunction();
+
+  if (F.hasOptNone())
+    return false;
+  if (!(ConstantSize && ConstantSize->getZExtValue() > 0 && ConstantSize->getZExtValue() <= 32))
+    return false;
+  if (!((Alignment.value() & 3) == 0))
+    return false;
+
+  return true;
+}
+
+SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemmove(
+    SelectionDAG &DAG, const SDLoc &dl, SDValue Chain, SDValue Dst,
+    SDValue Src, SDValue Size, Align Alignment, bool isVolatile,
+    MachinePointerInfo DstPtrInfo, MachinePointerInfo SrcPtrInfo) const {
+  ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
+  if (shouldGenerateAlignedFixedSmallMemmove(DAG, ConstantSize, Alignment)) {
+    return DAG.getNode(RISCVISD::ALIGNED_FIXED_SMALL_MEMMOVE, dl, MVT::Other, Chain, Dst, Src,
+                       DAG.getZExtOrTrunc(Size, dl, MVT::i32));
+  }
+
+  return SDValue();
+}
+
 static bool shouldGenerateAlignedBzero4(SelectionDAG &DAG,
     ConstantSDNode *ConstantSrc, ConstantSDNode *ConstantSize, Align Alignment) {
 
