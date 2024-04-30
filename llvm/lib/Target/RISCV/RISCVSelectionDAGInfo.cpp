@@ -124,3 +124,35 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemset(
 
   return SDValue();
 }
+
+static bool shouldGenerateAlignedFixedMemcmp(SelectionDAG &DAG, ConstantSDNode *ConstantSize, Align Alignment) {
+  auto &F = DAG.getMachineFunction().getFunction();
+
+  if (F.hasOptNone())
+    return false;
+  if (!(ConstantSize && ConstantSize->getZExtValue() > 0))
+    return false;
+  // if (!((Alignment.value() & 3) == 0))
+  //   return false;
+
+  return true;
+}
+
+std::pair<SDValue, SDValue>
+RISCVSelectionDAGInfo::EmitTargetCodeForMemcmp(SelectionDAG &DAG, const SDLoc &dl, SDValue Chain,
+    SDValue Ptr1, SDValue Ptr2, SDValue Size,
+    MachinePointerInfo Op1PtrInfo,
+    MachinePointerInfo Op2PtrInfo,
+    Align Alignment) const {
+  ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
+
+  if (shouldGenerateAlignedFixedMemcmp(DAG, ConstantSize, Alignment)) {
+    SDVTList VTs = DAG.getVTList(MVT::i32, MVT::Other);
+    SDValue Ret = DAG.getNode(RISCVISD::ALIGNED_FIXED_MEMCMP, dl, VTs, Chain, Ptr1, Ptr2, Ptr2,
+                       DAG.getZExtOrTrunc(Size, dl, MVT::i32));
+    Chain = Ret.getValue(1);
+    return std::make_pair(Ret, Chain);
+  }
+
+  return std::make_pair(SDValue(), SDValue());
+}

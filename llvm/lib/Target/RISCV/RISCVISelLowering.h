@@ -380,6 +380,7 @@ enum NodeType : unsigned {
   ALIGNED_FIXED_SMALL_MEMMOVE,
   ALIGNED_MEMCPY4,
   ALIGNED_MEMCPY4_VSIZE,
+  ALIGNED_FIXED_MEMCMP,
 
   // Branchless select operations, matching the semantics of the instructions
   // defined in Zicond or XVentanaCondOps.

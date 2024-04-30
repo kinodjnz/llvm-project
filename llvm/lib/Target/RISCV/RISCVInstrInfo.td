@@ -56,6 +56,9 @@ def SDT_RISCVAlignedMemcpy4 : SDTypeProfile<0, 3, [
 def SDT_RISCVAlignedMemcpy4Vsize : SDTypeProfile<0, 3, [
   SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
 ]>;
+def SDT_RISCVAlignedFixedMemcmp : SDTypeProfile<1, 4, [
+  SDTCisVT<0, i32>, SDTCisPtrTy<1>, SDTCisPtrTy<2>, SDTCisPtrTy<3>, SDTCisInt<4>
+]>;
 
 // Target-independent nodes, but with target-specific formats.
 def callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_CallSeqStart,
@@ -120,6 +123,9 @@ def riscv_aligned_memcpy4 : SDNode<"RISCVISD::ALIGNED_MEMCPY4",
 def riscv_aligned_memcpy4_vsize : SDNode<"RISCVISD::ALIGNED_MEMCPY4_VSIZE",
                                    SDT_RISCVAlignedMemcpy4Vsize,
                                    [SDNPHasChain, SDNPMayStore]>;
+def riscv_aligned_fixed_memcmp : SDNode<"RISCVISD::ALIGNED_FIXED_MEMCMP",
+                                  SDT_RISCVAlignedFixedMemcmp,
+                                  [SDNPHasChain, SDNPMayStore]>;
 
 //===----------------------------------------------------------------------===//
 // Operand and SDNode transformation definitions.
@@ -1976,6 +1982,9 @@ def AlignedMemcpy4 : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(ris
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
 def AlignedMemcpy4Vsize : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4_vsize GPR:$dst, GPR:$src, GPR:$srclst)]>;
+
+let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
+def AlignedFixedMemcmp : Pseudo<(outs GPR:$cmp), (ins GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, i32imm:$size), [(set GPR:$cmp, (riscv_aligned_fixed_memcmp GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, (i32 imm:$size)))]>;
 
 //===----------------------------------------------------------------------===//
 // Standard extensions
