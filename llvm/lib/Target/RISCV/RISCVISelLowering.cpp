@@ -14580,91 +14580,19 @@ static MachineBasicBlock *emitAlignedFixedSmallMemmovePseudo(MachineInstr &MI,
   return DoneMBB;
 }
 
-static MachineBasicBlock *emitAlignedMemcpy4Pseudo(MachineInstr &MI,
+static MachineBasicBlock *emitAlignedFixedMemcpyPseudo(MachineInstr &MI,
                                                    MachineBasicBlock *BB) {
-  assert(MI.getOpcode() == RISCV::AlignedMemcpy4 && "Unexpected instruction");
+  assert(MI.getOpcode() == RISCV::AlignedFixedMemcpy && "Unexpected instruction");
 
   MachineFunction &MF = *BB->getParent();
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
   MachineFunction::iterator It = ++BB->getIterator();
 
   MachineBasicBlock *EntryMBB = BB;
-  MachineBasicBlock *LoopMBB = MF.CreateMachineBasicBlock(LLVM_BB);
-  MF.insert(It, LoopMBB);
-  MachineBasicBlock *DoneMBB = MF.CreateMachineBasicBlock(LLVM_BB);
-  MF.insert(It, DoneMBB);
-
-  // Transfer the remainder of BB and its successor edges to DoneMBB.
-  DoneMBB->splice(DoneMBB->begin(), EntryMBB,
-                  std::next(MachineBasicBlock::iterator(MI)), EntryMBB->end());
-  DoneMBB->transferSuccessorsAndUpdatePHIs(EntryMBB);
-
-  EntryMBB->addSuccessor(LoopMBB);
-
-  MachineRegisterInfo &RegInfo = MF.getRegInfo();
-  Register CurrDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register NextDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register CurrSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register NextSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register TransferReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register Dst = MI.getOperand(0).getReg();
-  Register Src = MI.getOperand(1).getReg();
-  Register SrcLst = MI.getOperand(2).getReg();
-  DebugLoc DL = MI.getDebugLoc();
-
-  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
-
-  BuildMI(LoopMBB, DL, TII->get(RISCV::PHI), CurrDstReg)
-      .addUse(Dst)
-      .addMBB(EntryMBB)
-      .addUse(NextDstReg)
-      .addMBB(LoopMBB);
-  BuildMI(LoopMBB, DL, TII->get(RISCV::PHI), CurrSrcReg)
-      .addUse(Src)
-      .addMBB(EntryMBB)
-      .addUse(NextSrcReg)
-      .addMBB(LoopMBB);
-  BuildMI(LoopMBB, DL, TII->get(RISCV::LW), TransferReg)
-      .addUse(CurrSrcReg)
-      .addImm(0);
-  BuildMI(LoopMBB, DL, TII->get(RISCV::ADDI), NextSrcReg)
-      .addUse(CurrSrcReg)
-      .addImm(4);
-  BuildMI(LoopMBB, DL, TII->get(RISCV::SW))
-      .addUse(TransferReg)
-      .addUse(CurrDstReg)
-      .addImm(0);
-  BuildMI(LoopMBB, DL, TII->get(RISCV::ADDI), NextDstReg)
-      .addUse(CurrDstReg)
-      .addImm(4);
-  BuildMI(LoopMBB, DL, TII->get(RISCV::BNE))
-      .addUse(NextSrcReg)
-      .addReg(SrcLst)
-      .addMBB(LoopMBB);
-
-  LoopMBB->addSuccessor(LoopMBB);
-  LoopMBB->addSuccessor(DoneMBB);
-
-  MI.eraseFromParent();
-
-  return DoneMBB;
-}
-
-static MachineBasicBlock *emitAlignedMemcpy4VsizePseudo(MachineInstr &MI,
-                                                   MachineBasicBlock *BB) {
-  assert(MI.getOpcode() == RISCV::AlignedMemcpy4Vsize && "Unexpected instruction");
-
-  MachineFunction &MF = *BB->getParent();
-  const BasicBlock *LLVM_BB = BB->getBasicBlock();
-  MachineFunction::iterator It = ++BB->getIterator();
-
-  MachineBasicBlock *EntryMBB = BB;
-  MachineBasicBlock *FirstMBB = MF.CreateMachineBasicBlock(LLVM_BB);
-  MF.insert(It, FirstMBB);
   MachineBasicBlock *LoopWordMBB = MF.CreateMachineBasicBlock(LLVM_BB);
   MF.insert(It, LoopWordMBB);
-  MachineBasicBlock *LoopByteMBB = MF.CreateMachineBasicBlock(LLVM_BB);
-  MF.insert(It, LoopByteMBB);
+  MachineBasicBlock *RemainMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, RemainMBB);
   MachineBasicBlock *DoneMBB = MF.CreateMachineBasicBlock(LLVM_BB);
   MF.insert(It, DoneMBB);
 
@@ -14673,104 +14601,110 @@ static MachineBasicBlock *emitAlignedMemcpy4VsizePseudo(MachineInstr &MI,
                   std::next(MachineBasicBlock::iterator(MI)), EntryMBB->end());
   DoneMBB->transferSuccessorsAndUpdatePHIs(EntryMBB);
 
-  EntryMBB->addSuccessor(FirstMBB);
+  EntryMBB->addSuccessor(LoopWordMBB);
+
+  Register Dst = MI.getOperand(0).getReg();
+  Register Src = MI.getOperand(1).getReg();
+  Register SrcLast = MI.getOperand(2).getReg();
+  int64_t Size = MI.getOperand(3).getImm();
+  int64_t UnrollSize = MI.getOperand(4).getImm();
+
+  assert(UnrollSize > 0 && UnrollSize <= 8 && "Unsupported unroll size");
+
+  DebugLoc DL = MI.getDebugLoc();
 
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
   Register CurrDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
   Register NextDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
   Register CurrSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
   Register NextSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register CurrByteDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register NextByteDstReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register CurrByteSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register NextByteSrcReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register TransferReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register TransferByteReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register SrcLstWordReg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register Dst = MI.getOperand(0).getReg();
-  Register Src = MI.getOperand(1).getReg();
-  Register SrcLst = MI.getOperand(2).getReg();
-  DebugLoc DL = MI.getDebugLoc();
+
+  std::vector<Register> WordTransferRegs;
+  for (int64_t i = 0; i < UnrollSize; i++) {
+    WordTransferRegs.push_back(RegInfo.createVirtualRegister(&RISCV::GPRRegClass));
+  }
+  int64_t NumRemainRegs = UnrollSize + ((Size & 3) == 3 ? 1 : 0);
+  std::vector<Register> RemainTransferRegs;
+  for (int64_t i = 0; i < NumRemainRegs; i++) {
+    RemainTransferRegs.push_back(RegInfo.createVirtualRegister(&RISCV::GPRRegClass));
+  }
 
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
-
-  BuildMI(FirstMBB, DL, TII->get(RISCV::BEQ))
-      .addUse(Src)
-      .addUse(SrcLst)
-      .addMBB(DoneMBB);
-  BuildMI(FirstMBB, DL, TII->get(RISCV::ANDI), SrcLstWordReg)
-      .addUse(SrcLst)
-      .addImm(-4);
-
-  FirstMBB->addSuccessor(LoopWordMBB);
-  FirstMBB->addSuccessor(DoneMBB);
 
   BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrDstReg)
       .addUse(Dst)
-      .addMBB(FirstMBB)
+      .addMBB(EntryMBB)
       .addUse(NextDstReg)
       .addMBB(LoopWordMBB);
   BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrSrcReg)
       .addUse(Src)
-      .addMBB(FirstMBB)
+      .addMBB(EntryMBB)
       .addUse(NextSrcReg)
       .addMBB(LoopWordMBB);
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::LW), TransferReg)
-      .addUse(CurrSrcReg)
-      .addImm(0);
+  for (int64_t i = 0; i < UnrollSize; i++) {
+    BuildMI(LoopWordMBB, DL, TII->get(RISCV::LW), WordTransferRegs[i])
+        .addUse(CurrSrcReg)
+        .addImm(4 * i);
+  }
   BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextSrcReg)
       .addUse(CurrSrcReg)
-      .addImm(4);
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::SW))
-      .addUse(TransferReg)
-      .addUse(CurrDstReg)
-      .addImm(0);
+      .addImm(4 * UnrollSize);
+  for (int64_t i = 0; i < UnrollSize; i++) {
+    BuildMI(LoopWordMBB, DL, TII->get(RISCV::SW))
+        .addUse(WordTransferRegs[i])
+        .addUse(CurrDstReg)
+        .addImm(4 * i);
+  }
   BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextDstReg)
       .addUse(CurrDstReg)
-      .addImm(4);
+      .addImm(4 * UnrollSize);
   BuildMI(LoopWordMBB, DL, TII->get(RISCV::BNE))
       .addUse(NextSrcReg)
-      .addUse(SrcLstWordReg)
+      .addUse(SrcLast)
       .addMBB(LoopWordMBB);
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::BEQ))
-      .addUse(NextSrcReg)
-      .addUse(SrcLst)
-      .addMBB(DoneMBB);
 
   LoopWordMBB->addSuccessor(LoopWordMBB);
-  LoopWordMBB->addSuccessor(LoopByteMBB);
-  LoopWordMBB->addSuccessor(DoneMBB);
+  LoopWordMBB->addSuccessor(RemainMBB);
 
-  BuildMI(LoopByteMBB, DL, TII->get(RISCV::PHI), CurrByteDstReg)
-      .addUse(NextDstReg)
-      .addMBB(LoopWordMBB)
-      .addUse(NextByteDstReg)
-      .addMBB(LoopByteMBB);
-  BuildMI(LoopByteMBB, DL, TII->get(RISCV::PHI), CurrByteSrcReg)
-      .addUse(NextSrcReg)
-      .addMBB(LoopWordMBB)
-      .addUse(NextByteSrcReg)
-      .addMBB(LoopByteMBB);
-  BuildMI(LoopByteMBB, DL, TII->get(RISCV::LBU), TransferByteReg)
-      .addUse(CurrByteSrcReg)
-      .addImm(0);
-  BuildMI(LoopByteMBB, DL, TII->get(RISCV::ADDI), NextByteSrcReg)
-      .addUse(CurrByteSrcReg)
-      .addImm(1);
-  BuildMI(LoopByteMBB, DL, TII->get(RISCV::SB))
-      .addUse(TransferByteReg)
-      .addUse(CurrByteDstReg)
-      .addImm(0);
-  BuildMI(LoopByteMBB, DL, TII->get(RISCV::ADDI), NextByteDstReg)
-      .addUse(CurrByteDstReg)
-      .addImm(1);
-  BuildMI(LoopByteMBB, DL, TII->get(RISCV::BNE))
-      .addUse(NextByteSrcReg)
-      .addUse(SrcLst)
-      .addMBB(LoopByteMBB);
+  int64_t RemainSize = Size % (4 * UnrollSize);
 
-  LoopByteMBB->addSuccessor(LoopByteMBB);
-  LoopByteMBB->addSuccessor(DoneMBB);
+  for (int64_t i = 0; i < (RemainSize + 3) / 4; i++) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::LW), RemainTransferRegs[i])
+        .addUse(NextSrcReg)
+        .addImm(4 * i);
+  }
+  for (int64_t i = 0; i < RemainSize / 4; i++) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SW))
+        .addUse(RemainTransferRegs[i])
+        .addUse(NextDstReg)
+        .addImm(4 * i);
+  }
+  int64_t last = RemainSize / 4;
+  if ((RemainSize & 3) == 1) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SB))
+        .addUse(RemainTransferRegs[last])
+        .addUse(NextDstReg)
+        .addImm(4 * last);
+  } else if ((RemainSize & 3) == 2) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SH))
+        .addUse(RemainTransferRegs[last])
+        .addUse(NextDstReg)
+        .addImm(4 * last);
+  } else if ((RemainSize & 3) == 3) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SH))
+        .addUse(RemainTransferRegs[last])
+        .addUse(Dst)
+        .addImm(4 * last);
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SRLI), RemainTransferRegs[last + 1])
+        .addUse(RemainTransferRegs[last])
+        .addImm(16);
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SB))
+        .addUse(RemainTransferRegs[last + 1])
+        .addUse(Dst)
+        .addImm(4 * last + 2);
+  }
+
+  RemainMBB->addSuccessor(DoneMBB);
 
   MI.eraseFromParent();
 
@@ -14802,11 +14736,12 @@ static MachineBasicBlock *emitAlignedFixedMemcmpPseudo(MachineInstr &MI,
 
   EntryMBB->addSuccessor(LoopMBB);
 
-  Register Cmp = MI.getOperand(0).getReg();
-  Register Ptr1 = MI.getOperand(1).getReg();
-  Register Ptr2 = MI.getOperand(2).getReg();
-  Register PtrLast2 = MI.getOperand(3).getReg();
-  int64_t Size = MI.getOperand(4).getImm();
+  Register Last1 = MI.getOperand(0).getReg();
+  Register Last2 = MI.getOperand(1).getReg();
+  Register Ptr1 = MI.getOperand(2).getReg();
+  Register Ptr2 = MI.getOperand(3).getReg();
+  Register PtrLast2 = MI.getOperand(4).getReg();
+  int64_t Size = MI.getOperand(5).getImm();
   DebugLoc DL = MI.getDebugLoc();
 
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
@@ -14848,7 +14783,7 @@ static MachineBasicBlock *emitAlignedFixedMemcmpPseudo(MachineInstr &MI,
       .addUse(Data2Reg)
       .addMBB(CompareMBB);
   BuildMI(LoopMBB, DL, TII->get(RISCV::BNE))
-      .addUse(NextPtr1Reg)
+      .addUse(NextPtr2Reg)
       .addUse(PtrLast2)
       .addMBB(LoopMBB);
 
@@ -14892,28 +14827,16 @@ static MachineBasicBlock *emitAlignedFixedMemcmpPseudo(MachineInstr &MI,
 
   RemainMBB->addSuccessor(CompareMBB);
 
-  Register Last1Reg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register Last2Reg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register Rev1Reg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-  Register Rev2Reg = RegInfo.createVirtualRegister(&RISCV::GPRRegClass);
-
-  BuildMI(CompareMBB, DL, TII->get(RISCV::PHI), Last1Reg)
+  BuildMI(CompareMBB, DL, TII->get(RISCV::PHI), Last1)
       .addUse(Data1Reg)
       .addMBB(LoopMBB)
       .addUse(Remain1Reg)
       .addMBB(RemainMBB);
-  BuildMI(CompareMBB, DL, TII->get(RISCV::PHI), Last2Reg)
+  BuildMI(CompareMBB, DL, TII->get(RISCV::PHI), Last2)
       .addUse(Data2Reg)
       .addMBB(LoopMBB)
       .addUse(Remain2Reg)
       .addMBB(RemainMBB);
-  BuildMI(CompareMBB, DL, TII->get(RISCV::REV8_RV32), Rev1Reg)
-      .addUse(Last1Reg);
-  BuildMI(CompareMBB, DL, TII->get(RISCV::REV8_RV32), Rev2Reg)
-      .addUse(Last2Reg);
-  BuildMI(CompareMBB, DL, TII->get(RISCV::SUB), Cmp)
-      .addUse(Rev1Reg)
-      .addUse(Rev2Reg);
 
   CompareMBB->addSuccessor(DoneMBB);
 
@@ -15046,10 +14969,8 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return emitAlignedBzero4Pseudo(MI, BB);
   case RISCV::AlignedFixedSmallMemmove:
     return emitAlignedFixedSmallMemmovePseudo(MI, BB);
-  case RISCV::AlignedMemcpy4:
-    return emitAlignedMemcpy4Pseudo(MI, BB);
-  case RISCV::AlignedMemcpy4Vsize:
-    return emitAlignedMemcpy4VsizePseudo(MI, BB);
+  case RISCV::AlignedFixedMemcpy:
+    return emitAlignedFixedMemcpyPseudo(MI, BB);
   case RISCV::AlignedFixedMemcmp:
     return emitAlignedFixedMemcmpPseudo(MI, BB);
   }
@@ -16789,8 +16710,7 @@ const char *RISCVTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(CZERO_NEZ)
   NODE_NAME_CASE(ALIGNED_BZERO4)
   NODE_NAME_CASE(ALIGNED_FIXED_SMALL_MEMMOVE)
-  NODE_NAME_CASE(ALIGNED_MEMCPY4)
-  NODE_NAME_CASE(ALIGNED_MEMCPY4_VSIZE)
+  NODE_NAME_CASE(ALIGNED_FIXED_MEMCPY)
   NODE_NAME_CASE(ALIGNED_FIXED_MEMCMP)
   }
   // clang-format on

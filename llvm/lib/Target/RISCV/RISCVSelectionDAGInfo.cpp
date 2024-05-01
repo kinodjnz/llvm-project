@@ -19,26 +19,13 @@ using namespace llvm;
 
 #define DEBUG_TYPE "riscv-selectiondag-info"
 
-static bool shouldGenerateAlignedMemcpy4(SelectionDAG &DAG,
-    ConstantSDNode *ConstantSize, Align Alignment) {
+static bool shouldGenerateAlignedFixedMemcpy(SelectionDAG &DAG, ConstantSDNode *ConstantSize, Align Alignment) {
 
   auto &F = DAG.getMachineFunction().getFunction();
 
   if (F.hasOptNone())
     return false;
-  if (!(ConstantSize && ConstantSize->getZExtValue() > 0 && (ConstantSize->getZExtValue() & 3) == 0))
-    return false;
-  if (!((Alignment.value() & 3) == 0))
-    return false;
-
-  return true;
-}
-
-static bool shouldGenerateAlignedMemcpy4Vsize(SelectionDAG &DAG, Align Alignment) {
-
-  auto &F = DAG.getMachineFunction().getFunction();
-
-  if (F.hasOptNone())
+  if (!(ConstantSize && ConstantSize->getZExtValue() >= 16))
     return false;
   if (!((Alignment.value() & 3) == 0))
     return false;
@@ -52,12 +39,19 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemcpy(
     MachinePointerInfo DstPtrInfo, MachinePointerInfo SrcPtrInfo) const {
   ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
 
-  if (!AlwaysInline && shouldGenerateAlignedMemcpy4(DAG, ConstantSize, Alignment))
-    return DAG.getNode(RISCVISD::ALIGNED_MEMCPY4, dl, MVT::Other, Chain, Dst, Src,
-                       DAG.getMemBasePlusOffset(Src, DAG.getZExtOrTrunc(Size, dl, MVT::i32), dl));
-  if (!AlwaysInline && shouldGenerateAlignedMemcpy4Vsize(DAG, Alignment))
-    return DAG.getNode(RISCVISD::ALIGNED_MEMCPY4_VSIZE, dl, MVT::Other, Chain, Dst, Src,
-                       DAG.getMemBasePlusOffset(Src, DAG.getZExtOrTrunc(Size, dl, MVT::i32), dl));
+  if (!AlwaysInline && shouldGenerateAlignedFixedMemcpy(DAG, ConstantSize, Alignment)) {
+    SDValue SizeValue = DAG.getZExtOrTrunc(Size, dl, MVT::i32);
+    EVT SizeVT = SizeValue.getValueType();
+    SDValue SizeMask = DAG.getConstant(APInt::getHighBitsSet(SizeVT.getScalarSizeInBits(), SizeVT.getScalarSizeInBits() - 4), dl, SizeVT);
+    SDValue TruncatedSize = DAG.getNode(ISD::AND, dl, SizeVT, SizeValue, SizeMask);
+    SDValue Ops[] = {
+      Chain, Dst, Src,
+      DAG.getMemBasePlusOffset(Src, TruncatedSize, dl),
+      DAG.getZExtOrTrunc(Size, dl, MVT::i32),
+      DAG.getConstant(4, dl, MVT::i32)
+    };
+    return DAG.getNode(RISCVISD::ALIGNED_FIXED_MEMCPY, dl, MVT::Other, Ops);
+  }
 
   return SDValue();
 }
@@ -116,7 +110,8 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemset(
   if (!AlwaysInline && shouldGenerateAlignedBzero4(DAG, ConstantSrc, ConstantSize, Alignment)) {
     SDValue SizeValue = DAG.getZExtOrTrunc(Size, dl, MVT::i32);
     EVT SizeVT = SizeValue.getValueType();
-    SDValue TruncatedSizeValue = DAG.getNode(ISD::AND, dl, SizeVT, SizeValue, DAG.getConstant(APInt::getHighBitsSet(SizeVT.getScalarSizeInBits(), SizeVT.getScalarSizeInBits() - 2), dl, SizeVT));
+    SDValue SizeMask = DAG.getConstant(APInt::getHighBitsSet(SizeVT.getScalarSizeInBits(), SizeVT.getScalarSizeInBits() - 2), dl, SizeVT);
+    SDValue TruncatedSizeValue = DAG.getNode(ISD::AND, dl, SizeVT, SizeValue, SizeMask);
     return DAG.getNode(RISCVISD::ALIGNED_BZERO4, dl, MVT::Other, Chain, Dst,
                        DAG.getMemBasePlusOffset(Dst, TruncatedSizeValue, dl),
                        DAG.getZExtOrTrunc(Size, dl, MVT::i32));
@@ -125,34 +120,49 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemset(
   return SDValue();
 }
 
-static bool shouldGenerateAlignedFixedMemcmp(SelectionDAG &DAG, ConstantSDNode *ConstantSize, Align Alignment) {
-  auto &F = DAG.getMachineFunction().getFunction();
-
-  if (F.hasOptNone())
-    return false;
-  if (!(ConstantSize && ConstantSize->getZExtValue() > 0))
-    return false;
-  // if (!((Alignment.value() & 3) == 0))
-  //   return false;
-
-  return true;
-}
-
 std::pair<SDValue, SDValue>
 RISCVSelectionDAGInfo::EmitTargetCodeForMemcmp(SelectionDAG &DAG, const SDLoc &dl, SDValue Chain,
     SDValue Ptr1, SDValue Ptr2, SDValue Size,
     MachinePointerInfo Op1PtrInfo,
     MachinePointerInfo Op2PtrInfo,
-    Align Alignment) const {
+    bool IsOnlyUsedInZeroEqualityComparison) const {
+  auto &F = DAG.getMachineFunction().getFunction();
   ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
-
-  if (shouldGenerateAlignedFixedMemcmp(DAG, ConstantSize, Alignment)) {
-    SDVTList VTs = DAG.getVTList(MVT::i32, MVT::Other);
-    SDValue Ret = DAG.getNode(RISCVISD::ALIGNED_FIXED_MEMCMP, dl, VTs, Chain, Ptr1, Ptr2, Ptr2,
-                       DAG.getZExtOrTrunc(Size, dl, MVT::i32));
-    Chain = Ret.getValue(1);
-    return std::make_pair(Ret, Chain);
+  if (!F.hasOptNone() && ConstantSize) {
+    SDVTList VTs = DAG.getVTList(MVT::i32, MVT::i32, MVT::Other);
+    SDValue SizeValue = DAG.getZExtOrTrunc(Size, dl, MVT::i32);
+    EVT SizeVT = SizeValue.getValueType();
+    SDValue SizeMask = DAG.getConstant(APInt::getHighBitsSet(SizeVT.getScalarSizeInBits(), SizeVT.getScalarSizeInBits() - 2), dl, SizeVT);
+    SDValue WordTruncatedSize = DAG.getNode(ISD::AND, dl, SizeVT, SizeValue, SizeMask);
+    SDValue Data1 = DAG.getNode(RISCVISD::ALIGNED_FIXED_MEMCMP, dl, VTs, Chain, Ptr1, Ptr2,
+                      DAG.getMemBasePlusOffset(Ptr2, WordTruncatedSize, dl),
+                      DAG.getZExtOrTrunc(Size, dl, MVT::i32));
+    SDValue Data2 = Data1.getValue(1);
+    Chain = Data1.getValue(2);
+    SDValue Cmp;
+    if (IsOnlyUsedInZeroEqualityComparison) {
+      Cmp = DAG.getNode(ISD::SETCC, dl, MVT::i32, Data1, Data2, DAG.getCondCode(ISD::CondCode::SETNE));
+    } else {
+      Data1 = DAG.getNode(ISD::BSWAP, dl, MVT::i32, Data1);
+      Data2 = DAG.getNode(ISD::BSWAP, dl, MVT::i32, Data2);
+      Cmp = DAG.getNode(ISD::SUB, dl, MVT::i32, Data1, Data2);
+    }
+    return std::make_pair(Cmp, Chain);
   }
+
+    // SDValue CmpPtr = DAG.CreateStackTemporary(MVT::i32);
+    // SDValue Data1 = DAG.getLoad(MVT::i32, dl, Chain, Ptr1, MachinePointerInfo());
+    // Chain = Data1.getValue(1);
+    // SDValue Data2 = DAG.getLoad(MVT::i32, dl, Chain, Ptr2, MachinePointerInfo());
+    // Chain = Data2.getValue(1);
+    // SDValue Cmp = DAG.getNode(ISD::SUB, dl, MVT::i32, Data1, Data2);
+    // // int SPFI = cast<FrameIndexSDNode>(CmpPtr.getNode())->getIndex();
+    // // auto MPI = MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), SPFI);
+    // // Chain = DAG.getStore(Chain, dl, Cmp, CmpPtr, MPI);
+    // // Cmp = DAG.getLoad(MVT::i32, dl, Chain, CmpPtr, MPI);
+    // // Chain = Cmp.getValue(1);
+    // // Ptr1 = DAG.getMemBasePlusOffset(Ptr1, TypeSize::Fixed(4), dl);
+    // return std::make_pair(Cmp, Chain);
 
   return std::make_pair(SDValue(), SDValue());
 }

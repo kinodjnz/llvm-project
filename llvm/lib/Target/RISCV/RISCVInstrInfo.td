@@ -50,14 +50,11 @@ def SDT_RISCVAlignedBzero4 : SDTypeProfile<0, 3, [
 def SDT_RISCVAlignedFixedSmallMemmove : SDTypeProfile<0, 3, [
   SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisInt<2>
 ]>;
-def SDT_RISCVAlignedMemcpy4 : SDTypeProfile<0, 3, [
-  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
+def SDT_RISCVAlignedFixedMemcpy : SDTypeProfile<0, 5, [
+  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>, SDTCisInt<3>, SDTCisInt<4>
 ]>;
-def SDT_RISCVAlignedMemcpy4Vsize : SDTypeProfile<0, 3, [
-  SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisPtrTy<2>
-]>;
-def SDT_RISCVAlignedFixedMemcmp : SDTypeProfile<1, 4, [
-  SDTCisVT<0, i32>, SDTCisPtrTy<1>, SDTCisPtrTy<2>, SDTCisPtrTy<3>, SDTCisInt<4>
+def SDT_RISCVAlignedFixedMemcmp : SDTypeProfile<2, 4, [
+  SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisPtrTy<2>, SDTCisPtrTy<3>, SDTCisPtrTy<4>, SDTCisInt<5>
 ]>;
 
 // Target-independent nodes, but with target-specific formats.
@@ -117,11 +114,8 @@ def riscv_aligned_bzero4 : SDNode<"RISCVISD::ALIGNED_BZERO4",
 def riscv_aligned_fixed_small_memmove : SDNode<"RISCVISD::ALIGNED_FIXED_SMALL_MEMMOVE",
                                   SDT_RISCVAlignedFixedSmallMemmove,
                                   [SDNPHasChain, SDNPMayStore]>;
-def riscv_aligned_memcpy4 : SDNode<"RISCVISD::ALIGNED_MEMCPY4",
-                                   SDT_RISCVAlignedMemcpy4,
-                                   [SDNPHasChain, SDNPMayStore]>;
-def riscv_aligned_memcpy4_vsize : SDNode<"RISCVISD::ALIGNED_MEMCPY4_VSIZE",
-                                   SDT_RISCVAlignedMemcpy4Vsize,
+def riscv_aligned_fixed_memcpy : SDNode<"RISCVISD::ALIGNED_FIXED_MEMCPY",
+                                   SDT_RISCVAlignedFixedMemcpy,
                                    [SDNPHasChain, SDNPMayStore]>;
 def riscv_aligned_fixed_memcmp : SDNode<"RISCVISD::ALIGNED_FIXED_MEMCMP",
                                   SDT_RISCVAlignedFixedMemcmp,
@@ -1978,13 +1972,10 @@ let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
 def AlignedFixedSmallMemmove : Pseudo<(outs), (ins GPR:$dst, GPR:$src, i32imm:$size), [(riscv_aligned_fixed_small_memmove GPR:$dst, GPR:$src, (i32 imm:$size))]>;
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
-def AlignedMemcpy4 : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4 GPR:$dst, GPR:$src, GPR:$srclst)]>;
+def AlignedFixedMemcpy : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclast, i32imm:$size, i32imm:$unrollsize), [(riscv_aligned_fixed_memcpy GPR:$dst, GPR:$src, GPR:$srclast, (i32 imm:$size), (i32 imm:$unrollsize))]>;
 
 let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
-def AlignedMemcpy4Vsize : Pseudo<(outs), (ins GPR:$dst, GPR:$src, GPR:$srclst), [(riscv_aligned_memcpy4_vsize GPR:$dst, GPR:$src, GPR:$srclst)]>;
-
-let usesCustomInserter = 1, hasNoSchedulingInfo = 1 in
-def AlignedFixedMemcmp : Pseudo<(outs GPR:$cmp), (ins GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, i32imm:$size), [(set GPR:$cmp, (riscv_aligned_fixed_memcmp GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, (i32 imm:$size)))]>;
+def AlignedFixedMemcmp : Pseudo<(outs GPR:$data1, GPR:$data2), (ins GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, i32imm:$size), [(set GPR:$data1, GPR:$data2, (riscv_aligned_fixed_memcmp GPR:$ptr1, GPR:$ptr2, GPR:$ptr2last, (i32 imm:$size)))]>;
 
 //===----------------------------------------------------------------------===//
 // Standard extensions

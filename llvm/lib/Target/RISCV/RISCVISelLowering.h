@@ -378,8 +378,7 @@ enum NodeType : unsigned {
   // Inline aligned bzero and memcpy.
   ALIGNED_BZERO4,
   ALIGNED_FIXED_SMALL_MEMMOVE,
-  ALIGNED_MEMCPY4,
-  ALIGNED_MEMCPY4_VSIZE,
+  ALIGNED_FIXED_MEMCPY,
   ALIGNED_FIXED_MEMCMP,
 
   // Branchless select operations, matching the semantics of the instructions

@@ -103,7 +103,7 @@ public:
   EmitTargetCodeForMemcmp(SelectionDAG &DAG, const SDLoc &dl, SDValue Chain,
                           SDValue Op1, SDValue Op2, SDValue Op3,
                           MachinePointerInfo Op1PtrInfo,
-                          MachinePointerInfo Op2PtrInfo, Align Alignment) const {
+                          MachinePointerInfo Op2PtrInfo, bool IsOnlyUsedInZeroEqualityComparison) const {
     return EmitTargetCodeForMemcmp(DAG, dl, Chain, Op1, Op2, Op3, Op1PtrInfo, Op2PtrInfo);
   }
 
