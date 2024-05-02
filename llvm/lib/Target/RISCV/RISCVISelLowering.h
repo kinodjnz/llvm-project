@@ -375,8 +375,8 @@ enum NodeType : unsigned {
   // required CSR and the third is the value to write. Two results are produced,
   // the value read before the modification and the new chain pointer.
   SWAP_CSR,
-  // Inline aligned bzero and memcpy.
-  ALIGNED_BZERO4,
+  // Inline aligned bzero, memmove, memcpy and memcmp.
+  ALIGNED_FIXED_BZERO,
   ALIGNED_FIXED_SMALL_MEMMOVE,
   ALIGNED_FIXED_MEMCPY,
   ALIGNED_FIXED_MEMCMP,

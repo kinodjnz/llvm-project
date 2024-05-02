@@ -14419,9 +14419,9 @@ static MachineBasicBlock *emitFROUND(MachineInstr &MI, MachineBasicBlock *MBB,
   return DoneMBB;
 }
 
-static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
+static MachineBasicBlock *emitAlignedFixedBzeroPseudo(MachineInstr &MI,
                                                   MachineBasicBlock *BB) {
-  assert(MI.getOpcode() == RISCV::AlignedBzero4 && "Unexpected instruction");
+  assert(MI.getOpcode() == RISCV::AlignedFixedBzero && "Unexpected instruction");
 
   MachineFunction &MF = *BB->getParent();
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
@@ -14430,8 +14430,8 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
   MachineBasicBlock *EntryMBB = BB;
   MachineBasicBlock *LoopMBB = MF.CreateMachineBasicBlock(LLVM_BB);
   MF.insert(It, LoopMBB);
-  MachineBasicBlock *RemainderMBB = MF.CreateMachineBasicBlock(LLVM_BB);
-  MF.insert(It, RemainderMBB);
+  MachineBasicBlock *RemainMBB = MF.CreateMachineBasicBlock(LLVM_BB);
+  MF.insert(It, RemainMBB);
   MachineBasicBlock *DoneMBB = MF.CreateMachineBasicBlock(LLVM_BB);
   MF.insert(It, DoneMBB);
 
@@ -14448,7 +14448,10 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
   Register Dst = MI.getOperand(0).getReg();
   Register Lst = MI.getOperand(1).getReg();
   int64_t Size = MI.getOperand(2).getImm();
+  int64_t UnrollSize = MI.getOperand(3).getImm();
   DebugLoc DL = MI.getDebugLoc();
+
+  assert(UnrollSize > 0 && UnrollSize <= 8 && "Unsupported unroll size");
 
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
 
@@ -14457,42 +14460,52 @@ static MachineBasicBlock *emitAlignedBzero4Pseudo(MachineInstr &MI,
       .addMBB(EntryMBB)
       .addUse(NextDstReg)
       .addMBB(LoopMBB);
-  BuildMI(LoopMBB, DL, TII->get(RISCV::SW))
-      .addReg(RISCV::X0)
-      .addReg(CurrDstReg)
-      .addImm(0);
+  for (int64_t i = 0; i < UnrollSize; i++) {
+    BuildMI(LoopMBB, DL, TII->get(RISCV::SW))
+        .addReg(RISCV::X0)
+        .addReg(CurrDstReg)
+        .addImm(4 * i);
+  }
   BuildMI(LoopMBB, DL, TII->get(RISCV::ADDI), NextDstReg)
       .addUse(CurrDstReg)
-      .addImm(4);
+      .addImm(4 * UnrollSize);
   BuildMI(LoopMBB, DL, TII->get(RISCV::BNE))
       .addUse(NextDstReg)
       .addReg(Lst)
       .addMBB(LoopMBB);
 
-  if ((Size & 3) == 1) {
-    BuildMI(RemainderMBB, DL, TII->get(RISCV::SB))
+  int64_t RemainSize = Size % (4 * UnrollSize);
+  for (int64_t i = 0; i < RemainSize / 4; i++) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SW))
         .addReg(RISCV::X0)
         .addReg(NextDstReg)
-        .addImm(0);
-  } else if ((Size & 3) == 2) {
-    BuildMI(RemainderMBB, DL, TII->get(RISCV::SH))
+        .addImm(4 * i);
+  }
+  int64_t offset = 4 * (RemainSize / 4);
+  if ((RemainSize & 3) == 1) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SB))
         .addReg(RISCV::X0)
         .addReg(NextDstReg)
-        .addImm(0);
-  } else if ((Size & 3) == 3) {
-    BuildMI(RemainderMBB, DL, TII->get(RISCV::SH))
+        .addImm(offset);
+  } else if ((RemainSize & 3) == 2) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SH))
         .addReg(RISCV::X0)
         .addReg(NextDstReg)
-        .addImm(0);
-    BuildMI(RemainderMBB, DL, TII->get(RISCV::SB))
+        .addImm(offset);
+  } else if ((RemainSize & 3) == 3) {
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SH))
         .addReg(RISCV::X0)
         .addReg(NextDstReg)
-        .addImm(2);
+        .addImm(offset);
+    BuildMI(RemainMBB, DL, TII->get(RISCV::SB))
+        .addReg(RISCV::X0)
+        .addReg(NextDstReg)
+        .addImm(offset + 2);
   }
 
   LoopMBB->addSuccessor(LoopMBB);
-  LoopMBB->addSuccessor(RemainderMBB);
-  RemainderMBB->addSuccessor(DoneMBB);
+  LoopMBB->addSuccessor(RemainMBB);
+  RemainMBB->addSuccessor(DoneMBB);
 
   MI.eraseFromParent();
 
@@ -14965,8 +14978,8 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case RISCV::PseudoFROUND_D_IN32X:
     return emitFROUND(MI, BB, Subtarget);
 
-  case RISCV::AlignedBzero4:
-    return emitAlignedBzero4Pseudo(MI, BB);
+  case RISCV::AlignedFixedBzero:
+    return emitAlignedFixedBzeroPseudo(MI, BB);
   case RISCV::AlignedFixedSmallMemmove:
     return emitAlignedFixedSmallMemmovePseudo(MI, BB);
   case RISCV::AlignedFixedMemcpy:
@@ -16708,7 +16721,7 @@ const char *RISCVTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(SWAP_CSR)
   NODE_NAME_CASE(CZERO_EQZ)
   NODE_NAME_CASE(CZERO_NEZ)
-  NODE_NAME_CASE(ALIGNED_BZERO4)
+  NODE_NAME_CASE(ALIGNED_FIXED_BZERO)
   NODE_NAME_CASE(ALIGNED_FIXED_SMALL_MEMMOVE)
   NODE_NAME_CASE(ALIGNED_FIXED_MEMCPY)
   NODE_NAME_CASE(ALIGNED_FIXED_MEMCMP)

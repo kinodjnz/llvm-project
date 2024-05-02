@@ -82,7 +82,7 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemmove(
   return SDValue();
 }
 
-static bool shouldGenerateAlignedBzero4(SelectionDAG &DAG,
+static bool shouldGenerateAlignedFixedBzero(SelectionDAG &DAG,
     ConstantSDNode *ConstantSrc, ConstantSDNode *ConstantSize, Align Alignment) {
 
   auto &F = DAG.getMachineFunction().getFunction();
@@ -91,7 +91,7 @@ static bool shouldGenerateAlignedBzero4(SelectionDAG &DAG,
     return false;
   if (!(ConstantSrc && ConstantSrc->getZExtValue() == 0))
     return false;
-  if (!(ConstantSize && ConstantSize->getZExtValue() > 0 /*&& (ConstantSize->getZExtValue() & 3) == 0*/))
+  if (!(ConstantSize && ConstantSize->getZExtValue() > 0))
     return false;
   if (!((Alignment.value() & 3) == 0))
     return false;
@@ -107,14 +107,15 @@ SDValue RISCVSelectionDAGInfo::EmitTargetCodeForMemset(
   ConstantSDNode *ConstantSrc = dyn_cast<ConstantSDNode>(Src);
   ConstantSDNode *ConstantSize = dyn_cast<ConstantSDNode>(Size);
 
-  if (!AlwaysInline && shouldGenerateAlignedBzero4(DAG, ConstantSrc, ConstantSize, Alignment)) {
+  if (!AlwaysInline && shouldGenerateAlignedFixedBzero(DAG, ConstantSrc, ConstantSize, Alignment)) {
     SDValue SizeValue = DAG.getZExtOrTrunc(Size, dl, MVT::i32);
     EVT SizeVT = SizeValue.getValueType();
-    SDValue SizeMask = DAG.getConstant(APInt::getHighBitsSet(SizeVT.getScalarSizeInBits(), SizeVT.getScalarSizeInBits() - 2), dl, SizeVT);
+    SDValue SizeMask = DAG.getConstant(APInt::getHighBitsSet(SizeVT.getScalarSizeInBits(), SizeVT.getScalarSizeInBits() - 3), dl, SizeVT);
     SDValue TruncatedSizeValue = DAG.getNode(ISD::AND, dl, SizeVT, SizeValue, SizeMask);
-    return DAG.getNode(RISCVISD::ALIGNED_BZERO4, dl, MVT::Other, Chain, Dst,
+    return DAG.getNode(RISCVISD::ALIGNED_FIXED_BZERO, dl, MVT::Other, Chain, Dst,
                        DAG.getMemBasePlusOffset(Dst, TruncatedSizeValue, dl),
-                       DAG.getZExtOrTrunc(Size, dl, MVT::i32));
+                       DAG.getZExtOrTrunc(Size, dl, MVT::i32),
+                       DAG.getConstant(2, dl, MVT::i32));
   }
 
   return SDValue();
