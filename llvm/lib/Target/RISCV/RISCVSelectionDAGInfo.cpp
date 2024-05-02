@@ -146,24 +146,12 @@ RISCVSelectionDAGInfo::EmitTargetCodeForMemcmp(SelectionDAG &DAG, const SDLoc &d
     } else {
       Data1 = DAG.getNode(ISD::BSWAP, dl, MVT::i32, Data1);
       Data2 = DAG.getNode(ISD::BSWAP, dl, MVT::i32, Data2);
-      Cmp = DAG.getNode(ISD::SUB, dl, MVT::i32, Data1, Data2);
+      SDValue PlusSign = DAG.getNode(ISD::SETCC, dl, MVT::i32, Data1, Data2, DAG.getCondCode(ISD::CondCode::SETUGT));
+      SDValue MinusSign = DAG.getNode(ISD::SETCC, dl, MVT::i32, Data1, Data2, DAG.getCondCode(ISD::CondCode::SETULT));
+      Cmp = DAG.getNode(ISD::SUB, dl, MVT::i32, PlusSign, MinusSign);
     }
     return std::make_pair(Cmp, Chain);
   }
-
-    // SDValue CmpPtr = DAG.CreateStackTemporary(MVT::i32);
-    // SDValue Data1 = DAG.getLoad(MVT::i32, dl, Chain, Ptr1, MachinePointerInfo());
-    // Chain = Data1.getValue(1);
-    // SDValue Data2 = DAG.getLoad(MVT::i32, dl, Chain, Ptr2, MachinePointerInfo());
-    // Chain = Data2.getValue(1);
-    // SDValue Cmp = DAG.getNode(ISD::SUB, dl, MVT::i32, Data1, Data2);
-    // // int SPFI = cast<FrameIndexSDNode>(CmpPtr.getNode())->getIndex();
-    // // auto MPI = MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), SPFI);
-    // // Chain = DAG.getStore(Chain, dl, Cmp, CmpPtr, MPI);
-    // // Cmp = DAG.getLoad(MVT::i32, dl, Chain, CmpPtr, MPI);
-    // // Chain = Cmp.getValue(1);
-    // // Ptr1 = DAG.getMemBasePlusOffset(Ptr1, TypeSize::Fixed(4), dl);
-    // return std::make_pair(Cmp, Chain);
 
   return std::make_pair(SDValue(), SDValue());
 }
