@@ -14678,80 +14678,99 @@ static MachineBasicBlock *emitAlignedFixedMemcpyPseudo(MachineInstr &MI,
   for (int64_t i = 0; i < NumRemainRegs; i++) {
     RemainTransferRegs.push_back(RegInfo.createVirtualRegister(&RISCV::GPRRegClass));
   }
+  bool WithLoop = (UnrollSize * 2 <= Size / 4);
 
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
 
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrDstReg)
-      .addUse(Dst)
-      .addMBB(EntryMBB)
-      .addUse(NextDstReg)
-      .addMBB(LoopWordMBB);
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrSrcReg)
-      .addUse(Src)
-      .addMBB(EntryMBB)
-      .addUse(NextSrcReg)
-      .addMBB(LoopWordMBB);
-  for (int64_t i = 0; i < UnrollSize; i++) {
-    BuildMI(LoopWordMBB, DL, TII->get(RISCV::LW), WordTransferRegs[i])
+  if (WithLoop) {
+    BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrDstReg)
+        .addUse(Dst)
+        .addMBB(EntryMBB)
+        .addUse(NextDstReg)
+        .addMBB(LoopWordMBB);
+    BuildMI(LoopWordMBB, DL, TII->get(RISCV::PHI), CurrSrcReg)
+        .addUse(Src)
+        .addMBB(EntryMBB)
+        .addUse(NextSrcReg)
+        .addMBB(LoopWordMBB);
+    for (int64_t i = 0; i < UnrollSize; i++) {
+      BuildMI(LoopWordMBB, DL, TII->get(RISCV::LW), WordTransferRegs[i])
+          .addUse(CurrSrcReg)
+          .addImm(4 * i);
+    }
+    BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextSrcReg)
         .addUse(CurrSrcReg)
-        .addImm(4 * i);
-  }
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextSrcReg)
-      .addUse(CurrSrcReg)
-      .addImm(4 * UnrollSize);
-  for (int64_t i = 0; i < UnrollSize; i++) {
-    BuildMI(LoopWordMBB, DL, TII->get(RISCV::SW))
-        .addUse(WordTransferRegs[i])
+        .addImm(4 * UnrollSize);
+    for (int64_t i = 0; i < UnrollSize; i++) {
+      BuildMI(LoopWordMBB, DL, TII->get(RISCV::SW))
+          .addUse(WordTransferRegs[i])
+          .addUse(CurrDstReg)
+          .addImm(4 * i);
+    }
+    BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextDstReg)
         .addUse(CurrDstReg)
-        .addImm(4 * i);
-  }
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::ADDI), NextDstReg)
-      .addUse(CurrDstReg)
-      .addImm(4 * UnrollSize);
-  BuildMI(LoopWordMBB, DL, TII->get(RISCV::BNE))
-      .addUse(NextSrcReg)
-      .addUse(SrcLast)
-      .addMBB(LoopWordMBB);
+        .addImm(4 * UnrollSize);
+    BuildMI(LoopWordMBB, DL, TII->get(RISCV::BNE))
+        .addUse(NextSrcReg)
+        .addUse(SrcLast)
+        .addMBB(LoopWordMBB);
 
-  LoopWordMBB->addSuccessor(LoopWordMBB);
+    LoopWordMBB->addSuccessor(LoopWordMBB);
+  } else {
+    for (int64_t i = 0; i < UnrollSize; i++) {
+      BuildMI(LoopWordMBB, DL, TII->get(RISCV::LW), WordTransferRegs[i])
+          .addUse(Src)
+          .addImm(4 * i);
+    }
+    for (int64_t i = 0; i < UnrollSize; i++) {
+      BuildMI(LoopWordMBB, DL, TII->get(RISCV::SW))
+          .addUse(WordTransferRegs[i])
+          .addUse(Dst)
+          .addImm(4 * i);
+    }
+
+    NextDstReg = Dst;
+    NextSrcReg = Src;
+  }
   LoopWordMBB->addSuccessor(RemainMBB);
 
   int64_t RemainSize = Size % (4 * UnrollSize);
+  int64_t Offset = WithLoop ? 0 : 4 * UnrollSize;
 
   for (int64_t i = 0; i < (RemainSize + 3) / 4; i++) {
     BuildMI(RemainMBB, DL, TII->get(RISCV::LW), RemainTransferRegs[i])
         .addUse(NextSrcReg)
-        .addImm(4 * i);
+        .addImm(Offset + 4 * i);
   }
   for (int64_t i = 0; i < RemainSize / 4; i++) {
     BuildMI(RemainMBB, DL, TII->get(RISCV::SW))
         .addUse(RemainTransferRegs[i])
         .addUse(NextDstReg)
-        .addImm(4 * i);
+        .addImm(Offset + 4 * i);
   }
   int64_t last = RemainSize / 4;
   if ((RemainSize & 3) == 1) {
     BuildMI(RemainMBB, DL, TII->get(RISCV::SB))
         .addUse(RemainTransferRegs[last])
         .addUse(NextDstReg)
-        .addImm(4 * last);
+        .addImm(Offset + 4 * last);
   } else if ((RemainSize & 3) == 2) {
     BuildMI(RemainMBB, DL, TII->get(RISCV::SH))
         .addUse(RemainTransferRegs[last])
         .addUse(NextDstReg)
-        .addImm(4 * last);
+        .addImm(Offset + 4 * last);
   } else if ((RemainSize & 3) == 3) {
     BuildMI(RemainMBB, DL, TII->get(RISCV::SH))
         .addUse(RemainTransferRegs[last])
         .addUse(Dst)
-        .addImm(4 * last);
+        .addImm(Offset + 4 * last);
     BuildMI(RemainMBB, DL, TII->get(RISCV::SRLI), RemainTransferRegs[last + 1])
         .addUse(RemainTransferRegs[last])
         .addImm(16);
     BuildMI(RemainMBB, DL, TII->get(RISCV::SB))
         .addUse(RemainTransferRegs[last + 1])
         .addUse(Dst)
-        .addImm(4 * last + 2);
+        .addImm(Offset + 4 * last + 2);
   }
 
   RemainMBB->addSuccessor(DoneMBB);
