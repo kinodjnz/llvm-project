@@ -338,8 +338,10 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   if (!Subtarget.hasVendorXTHeadCondMov())
     setOperationAction(ISD::SELECT, XLenVT, Custom);
 
-  if (Subtarget.hasVendorXCramp())
+  if (Subtarget.hasVendorXCramp()) {
+    setOperationAction({ISD::FSHL, ISD::FSHR}, XLenVT, Custom);
     setOperationAction(ISD::SELECT, XLenVT, Legal);
+  }
 
   static const unsigned FPLegalNodeTypes[] = {
       ISD::FMINNUM,        ISD::FMAXNUM,       ISD::LRINT,
@@ -4898,6 +4900,31 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op,
     // Expand bitreverse to a bswap(rev8) followed by brev8.
     SDValue BSwap = DAG.getNode(ISD::BSWAP, DL, VT, Op.getOperand(0));
     return DAG.getNode(RISCVISD::BREV8, DL, VT, BSwap);
+  }
+  case ISD::FSHL:
+  case ISD::FSHR: {
+    MVT VT = Op.getSimpleValueType();
+    assert(VT == Subtarget.getXLenVT() && "Unexpected custom legalization");
+    SDLoc DL(Op);
+    // FSL/FSR take a log2(XLen)+1 bit shift amount but XLenVT FSHL/FSHR only
+    // use log(XLen) bits. Mask the shift amount accordingly to prevent
+    // accidentally setting the extra bit.
+    unsigned ShAmtWidth = Subtarget.getXLen() - 1;
+    SDValue ShAmt = DAG.getNode(ISD::AND, DL, VT, Op.getOperand(2),
+                                DAG.getConstant(ShAmtWidth, DL, VT));
+    // fshl and fshr concatenate their operands in the same order. fsr and fsl
+    // instruction use different orders. fshl will return its first operand for
+    // shift of zero, fshr will return its second operand. fsl and fsr both
+    // return rs1 so the ISD nodes need to have different operand orders.
+    // Shift amount is in rs2.
+    SDValue Op0 = Op.getOperand(0);
+    SDValue Op1 = Op.getOperand(1);
+    unsigned Opc = RISCVISD::FSL;
+    if (Op.getOpcode() == ISD::FSHR) {
+      std::swap(Op0, Op1);
+      Opc = RISCVISD::FSR;
+    }
+    return DAG.getNode(Opc, DL, VT, Op0, Op1, ShAmt);
   }
   case ISD::TRUNCATE:
     // Only custom-lower vector truncates
@@ -12753,6 +12780,16 @@ SDValue RISCVTargetLowering::PerformDAGCombine(SDNode *N,
       return Op0.getOperand(0);
     break;
   }
+  case RISCVISD::FSR:
+  case RISCVISD::FSL: {
+    unsigned BitWidth = N->getSimpleValueType(0).getSizeInBits();
+    assert(isPowerOf2_32(BitWidth) && "Unexpected bit width");
+    // Only the lower log2(Bitwidth)+1 bits of the the shift amount are read.
+    if (SimplifyDemandedLowBitsHelper(1, Log2_32(BitWidth) + 1))
+      return SDValue(N, 0);
+
+    break;
+  }
   case RISCVISD::FMV_X_ANYEXTH:
   case RISCVISD::FMV_X_ANYEXTW_RV64: {
     SDLoc DL(N);
@@ -16725,6 +16762,8 @@ const char *RISCVTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(ALIGNED_FIXED_SMALL_MEMMOVE)
   NODE_NAME_CASE(ALIGNED_FIXED_MEMCPY)
   NODE_NAME_CASE(ALIGNED_FIXED_MEMCMP)
+  NODE_NAME_CASE(FSL)
+  NODE_NAME_CASE(FSR)
   }
   // clang-format on
   return nullptr;

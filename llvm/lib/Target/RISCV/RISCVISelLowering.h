@@ -380,6 +380,9 @@ enum NodeType : unsigned {
   ALIGNED_FIXED_SMALL_MEMMOVE,
   ALIGNED_FIXED_MEMCPY,
   ALIGNED_FIXED_MEMCMP,
+  // Funnel shifts
+  FSL,
+  FSR,
 
   // Branchless select operations, matching the semantics of the instructions
   // defined in Zicond or XVentanaCondOps.

@@ -14,6 +14,9 @@
 // Operand and SDNode transformation definitions.
 //===----------------------------------------------------------------------===//
 
+def riscv_fsl    : SDNode<"RISCVISD::FSL",    SDTIntShiftDOp>;
+def riscv_fsr    : SDNode<"RISCVISD::FSR",    SDTIntShiftDOp>;
+
 def uimm4_lsb0 : Operand<XLenVT>,
                  ImmLeaf<XLenVT, [{return isShiftedUInt<3, 1>(Imm);}]> {
   let ParserMatchClass = UImmAsmOperand<4, "Lsb0">;
@@ -164,6 +167,26 @@ class RVBTernaryR<bits<2> funct2, bits<3> funct3, RISCVOpcode opcode,
                   string opcodestr, string argstr>
     : RVInstR4<funct2, funct3, opcode, (outs GPR:$rd),
                (ins GPR:$rs1, GPR:$rs2, GPR:$rs3), opcodestr, argstr>;
+
+// Currently used by FSRI only
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBTernaryImm5<bits<2> funct2, bits<3> funct3, RISCVOpcode opcode,
+                     string opcodestr, string argstr>
+    : RVInst<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs3, uimm5:$shamt),
+             opcodestr, argstr, [], InstFormatR4> {
+  bits<5> rs3;
+  bits<5> shamt;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{31-27} = rs3;
+  let Inst{26-25} = funct2;
+  let Inst{24-20} = shamt;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
+  let Inst{6-0} = opcode.Value;
+}
 
 //===----------------------------------------------------------------------===//
 // Instructions
@@ -333,9 +356,17 @@ def C_AUIPC : RVInst16CIW<0b111, 0b00, (outs GPRC:$rd), (ins uimm8_auipc:$imm),
   let Inst{12-5} = imm{7-0};
 }
 
-let Predicates = [HasVendorXCramp] in
+let Predicates = [HasVendorXCramp] in {
 def CMOV : RVBTernaryR<0b11, 0b101, OPC_OP, "cmov", "$rd, $rs2, $rs1, $rs3">,
            Sched<[WriteCMov, ReadCMov, ReadCMov, ReadCMov]>;
+def FSL  : RVBTernaryR<0b10, 0b001, OPC_OP, "fsl", "$rd, $rs1, $rs3, $rs2">,
+           Sched<[WriteFSReg, ReadFSReg, ReadFSReg, ReadFSReg]>;
+def FSR  : RVBTernaryR<0b10, 0b101, OPC_OP, "fsr", "$rd, $rs1, $rs3, $rs2">,
+           Sched<[WriteFSReg, ReadFSReg, ReadFSReg, ReadFSReg]>;
+def FSRI : RVBTernaryImm5<0b10, 0b101, OPC_OP_IMM, "fsri",
+                          "$rd, $rs1, $rs3, $shamt">,
+           Sched<[WriteFSRImm, ReadFSRImm, ReadFSRImm]>;
+} // Predicates = [HasStdExtZbt]
 
 let Predicates = [HasVendorXCramp] in {
 def : Pat<(select (XLenVT (setne (XLenVT GPR:$rs2), 0)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
@@ -353,6 +384,19 @@ def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs3), (
 
 def : Pat<(select (XLenVT GPR:$rs2), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
           (CMOV GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
+} // Predicates = [HasVendorXCramp]
+
+let Predicates = [HasVendorXCramp] in {
+def : Pat<(riscv_fsl (XLenVT GPR:$rs1), (XLenVT GPR:$rs3), (XLenVT GPR:$rs2)),
+          (FSL GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
+def : Pat<(riscv_fsr (XLenVT GPR:$rs1), (XLenVT GPR:$rs3), (XLenVT GPR:$rs2)),
+          (FSR GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
+def : Pat<(riscv_fsr (XLenVT GPR:$rs1), (XLenVT GPR:$rs3), uimm5:$shamt),
+          (FSRI GPR:$rs1, GPR:$rs3, uimm5:$shamt)>;
+// We can use FSRI for FSL by immediate if we subtract the immediate from
+// XLen and swap the operands.
+def : Pat<(riscv_fsl (XLenVT GPR:$rs3), (XLenVT GPR:$rs1), uimm5:$shamt),
+          (FSRI GPR:$rs1, GPR:$rs3, (ImmSubFromXLen uimm5:$shamt))>;
 } // Predicates = [HasVendorXCramp]
 
 let Predicates = [HasVendorXCramp, HasStdExtMOrZmmul] in{
