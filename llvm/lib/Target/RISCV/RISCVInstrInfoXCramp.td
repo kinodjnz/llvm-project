@@ -14,6 +14,9 @@
 // Operand and SDNode transformation definitions.
 //===----------------------------------------------------------------------===//
 
+def riscv_fsl    : SDNode<"RISCVISD::FSL",    SDTIntShiftDOp>;
+def riscv_fsr    : SDNode<"RISCVISD::FSR",    SDTIntShiftDOp>;
+
 def uimm4_lsb0 : Operand<XLenVT>,
                  ImmLeaf<XLenVT, [{return isShiftedUInt<3, 1>(Imm);}]> {
   let ParserMatchClass = UImmAsmOperand<4, "Lsb0">;
@@ -161,6 +164,26 @@ class RVBTernaryR<bits<2> funct2, bits<3> funct3, RISCVOpcode opcode,
                   string opcodestr, string argstr>
     : RVInstR4<funct2, funct3, opcode, (outs GPR:$rd),
                (ins GPR:$rs1, GPR:$rs2, GPR:$rs3), opcodestr, argstr>;
+
+// Currently used by FSRI only
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBTernaryImm5<bits<2> funct2, bits<3> funct3, RISCVOpcode opcode,
+                     string opcodestr, string argstr>
+    : RVInst<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs3, uimm5:$shamt),
+             opcodestr, argstr, [], InstFormatR4> {
+  bits<5> rs3;
+  bits<5> shamt;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{31-27} = rs3;
+  let Inst{26-25} = funct2;
+  let Inst{24-20} = shamt;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
+  let Inst{6-0} = opcode.Value;
+}
 
 //===----------------------------------------------------------------------===//
 // Instructions
