@@ -58,6 +58,7 @@ def WriteFSqrt64    : SchedWrite;    // 64-bit floating point sqrt
 def WriteCMov       : SchedWrite;    // cmov
 def WriteFSReg      : SchedWrite;    // fsl, fsr
 def WriteFSRImm     : SchedWrite;    // fsri
+def WriteBscthReg   : SchedWrite;    // bsct.h
 
 // Integer to float conversions
 def WriteFCvtI32ToF16  : SchedWrite;
@@ -216,6 +217,7 @@ def ReadFClass64         : SchedRead;
 def ReadCMov             : SchedRead; // cmov
 def ReadFSReg            : SchedRead; // fsl, fsr
 def ReadFSRImm           : SchedRead; // fsri
+def ReadBscthReg         : SchedRead; // bsct.h
 
 // For CPUs that support Zfhmin, but not Zfh.
 multiclass UnsupportedSchedZfh {
@@ -236,6 +238,7 @@ def : WriteRes<WriteFSqrt16, []>;
 def : WriteRes<WriteCMov, []>;
 def : WriteRes<WriteFSReg, []>;
 def : WriteRes<WriteFSRImm, []>;
+def : WriteRes<WriteBscthReg, []>;
 
 def : ReadAdvance<ReadFAdd16, 0>;
 def : ReadAdvance<ReadFClass16, 0>;
@@ -254,6 +257,7 @@ def : ReadAdvance<ReadFSqrt16, 0>;
 def : ReadAdvance<ReadCMov, 0>;
 def : ReadAdvance<ReadFSReg, 0>;
 def : ReadAdvance<ReadFSRImm, 0>;
+def : ReadAdvance<ReadBscthReg, 0>;
 } // Unsupported = true
 }
 
