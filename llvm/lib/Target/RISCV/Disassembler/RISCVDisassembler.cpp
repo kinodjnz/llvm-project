@@ -387,6 +387,15 @@ static DecodeStatus decodeSImmNot0Nor4Operand(MCInst &Inst, uint32_t Imm,
 }
 
 template <unsigned N>
+static DecodeStatus decodeUImmBFILen(MCInst &Inst, uint32_t Imm,
+                                     int64_t Address,
+                                     const MCDisassembler *Decoder) {
+  Imm = (Imm <= 6 ? Imm : 8);
+  Inst.addOperand(MCOperand::createImm(Imm));
+  return MCDisassembler::Success;
+}
+
+template <unsigned N>
 static DecodeStatus decodeSImmOperandAndLsl1(MCInst &Inst, uint32_t Imm,
                                              int64_t Address,
                                              const MCDisassembler *Decoder) {
@@ -730,6 +739,8 @@ DecodeStatus RISCVDisassembler::getInstruction32(MCInst &MI, uint64_t &Size,
                         "Qualcomm uC Conditional Move custom opcode table");
   TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXqciint, DecoderTableXqciint32,
                         "Qualcomm uC Interrupts custom opcode table");
+  TRY_TO_DECODE_FEATURE(RISCV::FeatureVendorXCramp, DecoderTableCramp32,
+                        "Cramp table");
   TRY_TO_DECODE(true, DecoderTable32, "RISCV32 table");
 
   return MCDisassembler::Fail;

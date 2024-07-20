@@ -185,6 +185,92 @@ class RVBTernaryImm5<bits<2> funct2, bits<3> funct3, RISCVOpcode opcode,
   let Inst{6-0} = opcode.Value;
 }
 
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBitFieldRLen<bits<2> funct3, RISCVOpcode opcode,
+                     string opcodestr, string argstr>
+    : RVInst<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs3, GPR:$rs2, uimm_bfi_len:$len),
+             opcodestr, argstr, [], InstFormatR4> {
+  bits<3> len;
+  bits<5> rs3;
+  bits<5> rs2;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{31-27} = rs3;
+  let Inst{26-25} = len{2-1};
+  let Inst{24-20} = rs2;
+  let Inst{19-15} = rs1;
+  let Inst{14} = len{0};
+  let Inst{13-12} = funct3;
+  let Inst{11-7} = rd;
+  let Inst{6-0} = opcode.Value;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBitFieldXLen<bits<2> funct7, bits<3> funct3, RISCVOpcode opcode,
+                     string opcodestr, string argstr>
+    : RVInst<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2, uimm5:$len),
+             opcodestr, argstr, [], InstFormatR4> {
+  bits<5> len;
+  bits<5> rs2;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{31-27} = len;
+  let Inst{26-25} = funct7;
+  let Inst{24-20} = rs2;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
+  let Inst{6-0} = opcode.Value;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBitFieldImm5Len<bits<2> funct3, RISCVOpcode opcode,
+                        string opcodestr, string argstr>
+    : RVInst<(outs GPR:$rd), (ins GPR:$rs1, GPR:$rs3, uimm5:$shamt, uimm_bfi_len:$len),
+             opcodestr, argstr, [], InstFormatR4> {
+  bits<3> len;
+  bits<5> rs3;
+  bits<5> shamt;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{31-27} = rs3;
+  let Inst{26-25} = len{2-1};
+  let Inst{24-20} = shamt;
+  let Inst{19-15} = rs1;
+  let Inst{14} = len{0};
+  let Inst{13-12} = funct3;
+  let Inst{11-7} = rd;
+  let Inst{6-0} = opcode.Value;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBitFieldXImm5Len<bits<2> funct7, bits<3> funct3, RISCVOpcode opcode,
+                        string opcodestr, string argstr>
+    : RVInst<(outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt, uimm5:$len),
+             opcodestr, argstr, [], InstFormatR4> {
+  bits<5> len;
+  bits<5> shamt;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{31-27} = len;
+  let Inst{26-25} = funct7;
+  let Inst{24-20} = shamt;
+  let Inst{19-15} = rs1;
+  let Inst{14-12} = funct3;
+  let Inst{11-7} = rd;
+  let Inst{6-0} = opcode.Value;
+}
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+class RVBitInst_rr<bits<7> funct7, bits<3> funct3, RISCVOpcode opcode, string opcodestr>
+    : RVInstR<funct7, funct3, opcode, (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
+              opcodestr, "$rd, $rs1, $rs2"> {
+}
+
 //===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
@@ -363,57 +449,83 @@ def FSR  : RVBTernaryR<0b10, 0b101, OPC_OP, "fsr", "$rd, $rs1, $rs3, $rs2">,
 def FSRI : RVBTernaryImm5<0b10, 0b101, OPC_OP_IMM, "fsri",
                           "$rd, $rs1, $rs3, $shamt">,
            Sched<[WriteFSRImm, ReadFSRImm, ReadFSRImm]>;
-def BSCTH : ALU_rr<0b0100101, 0b001, "bsct.h">,
+def BSCTH : RVBitInst_rr<0b0100101, 0b001, OPC_OP, "bsct.h">,
             Sched<[WriteBscthReg, ReadBscthReg, ReadBscthReg]>;
-def BFMP : RVBTernaryR<0b10, 0b000, OPC_OP_P, "bfmp", "$rd, $rs1, $rs3, $rs2">,
-           Sched<[WriteBFReg, ReadBFReg, ReadBFReg, ReadBFReg]>;
-def BFM  : RVBitFieldRLen<0b10, OPC_OP_P, "bfm",
+def BFX  : RVBitFieldXLen<0b00, 0b000, OPC_CUSTOM_3, "bfx",
+                         "$rd, $rs1, $rs2, $len">,
+           Sched<[WriteBFRLen, ReadBFRLen, ReadBFRLen]>;
+def BFS  : RVBitFieldXLen<0b01, 0b000, OPC_CUSTOM_3, "bfs",
+                         "$rd, $rs1, $rs2, $len">,
+           Sched<[WriteBFRLen, ReadBFRLen, ReadBFRLen]>;
+def BFF  : RVBitFieldXLen<0b11, 0b000, OPC_CUSTOM_3, "bff",
+                         "$rd, $rs1, $rs2, $len">,
+           Sched<[WriteBFRLen, ReadBFRLen, ReadBFRLen]>;
+def BFA  : RVBitFieldRLen<0b01, OPC_CUSTOM_3, "bfa",
                          "$rd, $rs1, $rs3, $rs2, $len">,
            Sched<[WriteBFRLen, ReadBFRLen, ReadBFRLen, ReadBFRLen]>;
-def BFPP : RVBTernaryR<0b10, 0b001, OPC_OP_P, "bfpp", "$rd, $rs1, $rs3, $rs2">,
-           Sched<[WriteBFReg, ReadBFReg, ReadBFReg, ReadBFReg]>;
-def BFP  : RVBitFieldRLen<0b11, OPC_OP_P, "bfp",
+def BFM  : RVBitFieldRLen<0b10, OPC_CUSTOM_3, "bfm",
+                         "$rd, $rs1, $rs3, $rs2, $len">,
+           Sched<[WriteBFRLen, ReadBFRLen, ReadBFRLen, ReadBFRLen]>;
+def BFP  : RVBitFieldRLen<0b11, OPC_CUSTOM_3, "bfp",
                           "$rd, $rs1, $rs3, $rs2, $len">,
            Sched<[WriteBFRLen, ReadBFRLen, ReadBFRLen, ReadBFRLen]>;
+def BFAP : RVBTernaryR<0b01, 0b100, OPC_CUSTOM_3, "bfap", "$rd, $rs1, $rs3, $rs2">,
+           Sched<[WriteBFReg, ReadBFReg, ReadBFReg, ReadBFReg]>;
+def BFMP : RVBTernaryR<0b10, 0b100, OPC_CUSTOM_3, "bfmp", "$rd, $rs1, $rs3, $rs2">,
+           Sched<[WriteBFReg, ReadBFReg, ReadBFReg, ReadBFReg]>;
+def BFPP : RVBTernaryR<0b11, 0b100, OPC_CUSTOM_3, "bfpp", "$rd, $rs1, $rs3, $rs2">,
+           Sched<[WriteBFReg, ReadBFReg, ReadBFReg, ReadBFReg]>;
 } // Predicates = [HasVendorXCramp]
 
 let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp] in {
-def BFMI : RVBitFieldImm5Len<0b10, OPC_OP_V, "bfmi",
+def BFXI : RVBitFieldXImm5Len<0b00, 0b000, OPC_CUSTOM_2, "bfxi",
+                             "$rd, $rs1, $shamt, $len">,
+           Sched<[WriteBFImm, ReadBFImm]>;
+def BFSI : RVBitFieldXImm5Len<0b01, 0b000, OPC_CUSTOM_2, "bfsi",
+                             "$rd, $rs1, $shamt, $len">,
+           Sched<[WriteBFImm, ReadBFImm]>;
+def BFFI : RVBitFieldXImm5Len<0b11, 0b000, OPC_CUSTOM_2, "bffi",
+                             "$rd, $rs1, $shamt, $len">,
+           Sched<[WriteBFImm, ReadBFImm]>;
+def BFAI : RVBitFieldImm5Len<0b01, OPC_CUSTOM_2, "bfai",
                              "$rd, $rs1, $rs3, $shamt, $len">,
            Sched<[WriteBFImm, ReadBFImm, ReadBFImm]>;
-def BFPI : RVBitFieldImm5Len<0b11, OPC_OP_V, "bfpi",
+def BFMI : RVBitFieldImm5Len<0b10, OPC_CUSTOM_2, "bfmi",
+                             "$rd, $rs1, $rs3, $shamt, $len">,
+           Sched<[WriteBFImm, ReadBFImm, ReadBFImm]>;
+def BFPI : RVBitFieldImm5Len<0b11, OPC_CUSTOM_2, "bfpi",
                              "$rd, $rs1, $rs3, $shamt, $len">,
            Sched<[WriteBFImm, ReadBFImm, ReadBFImm]>;
 } // Predicates = [HasVendorXCramp]
 
 let Predicates = [HasVendorXCramp] in {
-def ORC    : RVBUnary<0b0010100, 0b11111, 0b101, OPC_OP_IMM, "orc">,
+def ORC    : Unary_r<0b001010011111, 0b101, "orc">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC2   : RVBUnary<0b0010100, 0b11110, 0b101, OPC_OP_IMM, "orc2">,
+def ORC2   : Unary_r<0b001010011110, 0b101, "orc2">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC4   : RVBUnary<0b0010100, 0b11100, 0b101, OPC_OP_IMM, "orc4">,
+def ORC4   : Unary_r<0b001010011100, 0b101, "orc4">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC8   : RVBUnary<0b0010100, 0b11000, 0b101, OPC_OP_IMM, "orc8">,
+def ORC8   : Unary_r<0b001010011000, 0b101, "orc8">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC16  : RVBUnary<0b0010100, 0b10000, 0b101, OPC_OP_IMM, "orc16">,
+def ORC16  : Unary_r<0b001010010000, 0b101, "orc16">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC_H  : RVBUnary<0b0010100, 0b01111, 0b101, OPC_OP_IMM, "orc.h">,
+def ORC_H  : Unary_r<0b001010001111, 0b101, "orc.h">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC2_H : RVBUnary<0b0010100, 0b01110, 0b101, OPC_OP_IMM, "orc2.h">,
+def ORC2_H : Unary_r<0b001010001110, 0b101, "orc2.h">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC4_H : RVBUnary<0b0010100, 0b01100, 0b101, OPC_OP_IMM, "orc4.h">,
+def ORC4_H : Unary_r<0b001010001100, 0b101, "orc4.h">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC8_H : RVBUnary<0b0010100, 0b01000, 0b101, OPC_OP_IMM, "orc8.h">,
+def ORC8_H : Unary_r<0b001010001000, 0b101, "orc8.h">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC2_B : RVBUnary<0b0010100, 0b00110, 0b101, OPC_OP_IMM, "orc2.b">,
+def ORC2_B : Unary_r<0b001010000110, 0b101, "orc2.b">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC4_B : RVBUnary<0b0010100, 0b00100, 0b101, OPC_OP_IMM, "orc4.b">,
+def ORC4_B : Unary_r<0b001010000100, 0b101, "orc4.b">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC_N  : RVBUnary<0b0010100, 0b00011, 0b101, OPC_OP_IMM, "orc.n">,
+def ORC_N  : Unary_r<0b001010000011, 0b101, "orc.n">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC2_N : RVBUnary<0b0010100, 0b00010, 0b101, OPC_OP_IMM, "orc2.n">,
+def ORC2_N : Unary_r<0b001010000010, 0b101, "orc2.n">,
              Sched<[WriteORCB, ReadORCB]>;
-def ORC_P  : RVBUnary<0b0010100, 0b00001, 0b101, OPC_OP_IMM, "orc.p">,
+def ORC_P  : Unary_r<0b001010000001, 0b101, "orc.p">,
              Sched<[WriteORCB, ReadORCB]>;
 } // Predicates = [HasVendorXCramp]
 
@@ -447,6 +559,11 @@ def : Pat<(riscv_fsr (XLenVT GPR:$rs1), (XLenVT GPR:$rs3), uimm5:$shamt),
 def : Pat<(riscv_fsl (XLenVT GPR:$rs3), (XLenVT GPR:$rs1), uimm5:$shamt),
           (FSRI GPR:$rs1, GPR:$rs3, (ImmSubFromXLen uimm5:$shamt))>;
 } // Predicates = [HasVendorXCramp]
+
+let Predicates = [HasVendorXCramp] in {
+def : Pat<(and (shiftop<shl> -1, (XLenVT GPR:$rs1)), (XLenVT GPR:$rs2)),
+          (BFM GPR:$rs2, (XLenVT X0), (ADDI GPR:$rs1, 1), 0)>;
+}
 
 let Predicates = [HasVendorXCramp, HasStdExtZmmul] in{
 def : CompressPat<(MUL GPRC:$rs1, GPRC:$rs1, GPRC:$rs2),
@@ -549,4 +666,28 @@ def : InstAlias<"cc.sh $rd, (${rs1})", (CC_SH GPRC:$rd, GPRC:$rs1, 0)>;
 def : InstAlias<"cc.sb0 (${rs1})",(CC_SB0 GPRC:$rs1, 0)>;
 def : InstAlias<"cc.sh0 (${rs1})",(CC_SH0 GPRC:$rs1, 0)>;
 def : InstAlias<"cc.sw0 (${rs1})",(CC_SW0 GPRC:$rs1, 0)>;
+}
+
+//===----------------------------------------------------------------------===//
+// Codegen patterns
+//===----------------------------------------------------------------------===//
+
+def XLenSubTrailingBitField : SDNodeXForm<imm, [{
+  uint64_t TrailingOnes = llvm::countr_one(N->getZExtValue());
+  return CurDAG->getTargetConstant(TrailingOnes, SDLoc(N),
+                                   N->getValueType(0));
+}]>;
+
+def TrailingBitFieldMask : PatLeaf<(imm), [{
+  if (!N->hasOneUse())
+    return false;
+  return !isInt<12>(N->getSExtValue()) && isMask_64(N->getZExtValue());
+}], XLenSubTrailingBitField>;
+
+let Predicates = [HasVendorXCramp] in {
+def : Pat<(XLenVT (sub 0, (and_oneuse GPR:$rs, 1))),
+          (BFSI $rs, 0, 1)>;
+
+// def : Pat<(XLenVT (and GPR:$rs, TrailingBitFieldMask:$mask)),
+//           (BFXI $rs, 0, TrailingBitFieldMask:$mask)>;
 }

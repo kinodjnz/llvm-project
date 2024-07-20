@@ -104,6 +104,8 @@ class RISCVAsmParser : public MCTargetAsmParser {
                                   const Twine &Msg);
   bool generateImmOutOfRangeError(SMLoc ErrorLoc, int64_t Lower, int64_t Upper,
                                   const Twine &Msg);
+  bool generateBFILenOutOfRangeError(OperandVector &Operands, uint64_t ErrorInfo,
+                                     const Twine &Msg);
 
   bool matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
@@ -867,6 +869,16 @@ public:
            VK == RISCVMCExpr::VK_RISCV_None;
   }
 
+  bool isUImm5BFILen() const {
+    if (!isImm())
+      return false;
+    int64_t Imm;
+    RISCVMCExpr::VariantKind VK = RISCVMCExpr::VK_RISCV_None;
+    bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
+    return IsConstantImm && ((0 <= Imm && Imm <= 6) || Imm == 8) &&
+           VK == RISCVMCExpr::VK_RISCV_None;
+  }
+
   bool isUImm4Lsb0() const {
     if (!isImm())
       return false;
@@ -1497,6 +1509,13 @@ bool RISCVAsmParser::generateImmOutOfRangeError(
   return generateImmOutOfRangeError(ErrorLoc, Lower, Upper, Msg);
 }
 
+bool RISCVAsmParser::generateBFILenOutOfRangeError(
+    OperandVector &Operands, uint64_t ErrorInfo,
+    const Twine &Msg = "BFI len must be an integer one of") {
+  SMLoc ErrorLoc = ((RISCVOperand &)*Operands[ErrorInfo]).getStartLoc();
+  return Error(ErrorLoc, Msg + " [0, 1, 2, 3, 4, 5, 6, 8]");
+}
+
 bool RISCVAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                              OperandVector &Operands,
                                              MCStreamer &Out,
@@ -1599,6 +1618,8 @@ bool RISCVAsmParser::matchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                       "immediate must be one of");
   case Match_InvalidUImm3:
     return generateImmOutOfRangeError(Operands, ErrorInfo, 0, (1 << 3) - 1);
+  case Match_InvalidUImm5BFILen:
+    return generateBFILenOutOfRangeError(Operands, ErrorInfo);
   case Match_InvalidUImm4:
     return generateImmOutOfRangeError(Operands, ErrorInfo, 0, (1 << 4) - 1);
   case Match_InvalidUImm4Lsb0:

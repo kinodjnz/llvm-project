@@ -99,6 +99,10 @@ public:
   unsigned getRegReg(const MCInst &MI, unsigned OpNo,
                      SmallVectorImpl<MCFixup> &Fixups,
                      const MCSubtargetInfo &STI) const;
+
+  unsigned encodeUImmBFILen(const MCInst &MI, unsigned OpNo,
+                             SmallVectorImpl<MCFixup> &Fixups,
+                             const MCSubtargetInfo &STI) const;
 };
 } // end anonymous namespace
 
@@ -585,6 +589,23 @@ unsigned RISCVMCCodeEmitter::getRegReg(const MCInst &MI, unsigned OpNo,
   unsigned Op1 = Ctx.getRegisterInfo()->getEncodingValue(MO1.getReg());
 
   return Op | Op1 << 5;
+}
+
+unsigned
+RISCVMCCodeEmitter::encodeUImmBFILen(const MCInst &MI, unsigned OpNo,
+                                     SmallVectorImpl<MCFixup> &Fixups,
+                                     const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+
+  assert(MO.isImm() && "BFI len must be immediate");
+  unsigned Imm = MO.getImm();
+  assert((Imm <= 6 || Imm == 8) && "unsupported BFI len");
+  if (Imm == 8) {
+    Imm = 7;
+  }
+  return Imm;
+
+  // return getImmOpValue(MI, OpNo, Fixups, STI);
 }
 
 #include "RISCVGenMCCodeEmitter.inc"

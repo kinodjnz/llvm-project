@@ -523,6 +523,175 @@ void RISCVDAGToDAGISel::selectVSETVLI(SDNode *Node) {
               CurDAG->getMachineNode(Opcode, DL, XLenVT, VLOperand, VTypeIOp));
 }
 
+bool RISCVDAGToDAGISel::tryBitfieldPlaceExtract(SDNode *Node) {
+  if (!Subtarget->hasVendorXCramp()) {
+    return false;
+  }
+
+  MVT VT = Node->getSimpleValueType(0);
+  unsigned Opcode = Node->getOpcode();
+  assert(Opcode == ISD::OR && "Unexpected opcode");
+  SDLoc DL(Node);
+
+  SDValue N0 = Node->getOperand(0);
+  if (N0.getOpcode() == ISD::AND && N0.hasOneUse() &&
+      isa<ConstantSDNode>(N0.getOperand(1))) {
+    uint64_t C1 = N0.getConstantOperandVal(1);
+
+    SDValue N00 = N0.getOperand(0);
+    if (isShiftedMask_64(C1) &&
+        N00.getOpcode() == ISD::SHL && N00.hasOneUse() &&
+        isa<ConstantSDNode>(N00.getOperand(1))) {
+      uint64_t C2 = N00.getConstantOperandVal(1);
+      SDValue X = N00.getOperand(0);
+      SDValue Y = Node->getOperand(1);
+
+      // unsigned C1 = N.getConstantOperandVal(1);
+      unsigned XLen = Subtarget->getXLen();
+      unsigned Trailing = llvm::countr_zero(C1);
+      unsigned MaskLen = llvm::bit_width(C1) - Trailing;
+      bool IsNoLeading = (XLen == (unsigned)llvm::bit_width(C1));
+
+      const APInt &C1Mask = N0.getConstantOperandAPInt(1);
+      KnownBits YKnown = CurDAG->computeKnownBits(Y);
+
+      if (Y.getOpcode() == ISD::AND && Y.hasOneUse() &&
+          isa<ConstantSDNode>(Y.getOperand(1))) {
+        uint64_t C3 = Y.getConstantOperandVal(1);
+        SDValue Z = Y.getOperand(0);
+
+        const APInt &C3Mask = Y.getConstantOperandAPInt(1);
+        KnownBits ZKnown = CurDAG->computeKnownBits(Z);
+
+        // Turn (or (and (shl x, c2), c1), (and z, c3))) -> (bfpi x, z, c2, maskLen) if c1 is a
+        // shifted mask with c2 trailing zeros, and (c1 ^ c3) is all-one
+        if (C2 == Trailing &&
+            (IsNoLeading || MaskLen == 8 || (1 <= MaskLen && MaskLen <= 6)) &&
+            (C1 & C3) == 0 &&
+            (~C1Mask & ~C3Mask).isSubsetOf(ZKnown.Zero)) {
+          SDVTList VTs = CurDAG->getVTList(VT);
+          SDValue Ops[] = {
+            X,
+            Z,
+            CurDAG->getTargetConstant(C2, DL, VT),
+            CurDAG->getTargetConstant((IsNoLeading ? 0 : MaskLen), DL, VT)
+          };
+          SDNode *BFPI = CurDAG->getMachineNode(RISCV::BFPI, DL, VTs, Ops);
+          ReplaceNode(Node, BFPI);
+          return true;
+        }
+      }
+
+      // Turn (or (and (shl x, c2), c1), y) -> (bfpi x, y, c1, c4) if c1 is a
+      // shifted mask with c2 trailing zeros, and (and y, c1) is zero
+      if (C2 == Trailing &&
+          (IsNoLeading || MaskLen == 8 || (1 <= MaskLen && MaskLen <= 6)) &&
+          C1Mask.isSubsetOf(YKnown.Zero)) {
+        SDVTList VTs = CurDAG->getVTList(VT);
+        SDValue Ops[] = {
+          X,
+          Y,
+          CurDAG->getTargetConstant(C2, DL, VT),
+          CurDAG->getTargetConstant((IsNoLeading ? 0 : MaskLen), DL, VT)
+        };
+        SDNode *BFPI = CurDAG->getMachineNode(RISCV::BFPI, DL, VTs, Ops);
+        ReplaceNode(Node, BFPI);
+        return true;
+      }
+    }
+  }
+
+  if (N0.getOpcode() == ISD::SHL && N0.hasOneUse() &&
+      isa<ConstantSDNode>(N0.getOperand(1))) {
+    uint64_t C2 = N0.getConstantOperandVal(1);
+    SDValue X = N0->getOperand(0);
+    SDValue Y = Node->getOperand(1);
+    KnownBits Known = CurDAG->computeKnownBits(X);
+    APInt ShiftMask(Subtarget->getXLen(), (1 << C2) - 1);
+
+    // Turn (or (shl x, c2), y) -> (bfpi x, y, c2, 0)
+    // if ~ShiftMask is subset of y's zero bits
+    if ((~ShiftMask).isSubsetOf(Known.Zero)) {
+      SDVTList VTs = CurDAG->getVTList(VT);
+      SDValue Ops[] = {
+        X,
+        Y,
+        CurDAG->getTargetConstant(C2, DL, VT),
+        CurDAG->getTargetConstant(0, DL, VT)
+      };
+      SDNode *BFPI = CurDAG->getMachineNode(RISCV::BFPI, DL, VTs, Ops);
+      ReplaceNode(Node, BFPI);
+      return true;
+    }
+  }
+
+  if (N0.getOpcode() == ISD::OR && N0.hasOneUse() &&
+      isa<ConstantSDNode>(Node->getOperand(1))) {
+    SDValue N00 = N0.getOperand(0);
+    SDValue N01 = N0.getOperand(1);
+    if (N00.getOpcode() == ISD::AND &&
+        isa<ConstantSDNode>(N00.getOperand(1)) &&
+        N01.getOpcode() == ISD::AND &&
+        isa<ConstantSDNode>(N01.getOperand(1)) &&
+        (N00.hasOneUse() || N01.hasOneUse())) {
+      uint64_t C1 = N00.getConstantOperandVal(1);
+      uint64_t C2 = N01.getConstantOperandVal(1);
+
+      if (isShiftedMask_64(C1) && isShiftedMask_64(C2)) {
+        SDValue X = N00.getOperand(0);
+        SDValue Y = N01.getOperand(0);
+        uint64_t C3 = Node->getConstantOperandVal(1);
+
+        unsigned XLen = Subtarget->getXLen();
+        unsigned C1Trailing = llvm::countr_zero(C1);
+        unsigned C1MaskLen = llvm::bit_width(C1) - C1Trailing;
+        bool C1IsNoLeading = (XLen == (unsigned)llvm::bit_width(C1));
+        unsigned C2Trailing = llvm::countr_zero(C2);
+        unsigned C2MaskLen = llvm::bit_width(C2) - C2Trailing;
+        bool C2IsNoLeading = (XLen == (unsigned)llvm::bit_width(C2));
+
+        // Turn (or (or (and x, c1), (and y, c2)), c3) -> (or (bfmi x, y, cs, cl), z)
+        if ((C1IsNoLeading || C1MaskLen == 8 || (1 <= C1MaskLen && C1MaskLen <= 6)) &&
+            (C1 & C2) == 0 &&
+            llvm::countr_zero((~C1 & ~C2) & ~C3) >= (int) XLen &&
+            isInt<12>(C3)) {
+          SDVTList VTs = CurDAG->getVTList(VT);
+          SDValue Ops[] = {
+            X,
+            Y,
+            CurDAG->getTargetConstant(C1Trailing, DL, VT),
+            CurDAG->getTargetConstant((C1IsNoLeading ? 0 : C1MaskLen), DL, VT)
+          };
+          SDNode *BFMI = CurDAG->getMachineNode(RISCV::BFMI, DL, VTs, Ops);
+          SDNode *ORI = CurDAG->getMachineNode(RISCV::ORI, DL, VT, SDValue(BFMI, 0),
+                                               CurDAG->getTargetConstant(C3, DL, VT));
+          ReplaceNode(Node, ORI);
+          return true;
+        }
+        if ((C2IsNoLeading || C2MaskLen == 8 || (1 <= C2MaskLen && C2MaskLen <= 6)) &&
+            (C1 & C2) == 0 &&
+            llvm::countr_zero((~C1 & ~C2) & ~C3) >= (int)XLen &&
+            isInt<12>(C3)) {
+          SDVTList VTs = CurDAG->getVTList(VT);
+          SDValue Ops[] = {
+            Y,
+            X,
+            CurDAG->getTargetConstant(C2Trailing, DL, VT),
+            CurDAG->getTargetConstant((C2IsNoLeading ? 0 : C2MaskLen), DL, VT)
+          };
+          SDNode *BFMI = CurDAG->getMachineNode(RISCV::BFMI, DL, VTs, Ops);
+          SDNode *ORI = CurDAG->getMachineNode(RISCV::ORI, DL, VT, SDValue(BFMI, 0),
+                                               CurDAG->getTargetConstant(C3, DL, VT));
+          ReplaceNode(Node, ORI);
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 bool RISCVDAGToDAGISel::tryShrinkShlLogicImm(SDNode *Node) {
   MVT VT = Node->getSimpleValueType(0);
   unsigned Opcode = Node->getOpcode();
@@ -1127,6 +1296,18 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
       return;
     }
 
+    if (Subtarget->hasVendorXCramp()) {
+      // Optimize (srl (and X, C2), C) ->
+      //          (bfxi X, C, C2 - C)
+      // Where C2 is a mask with C3 trailing ones.
+      SDNode *BFXI =
+          CurDAG->getMachineNode(RISCV::BFXI, DL, VT, N0->getOperand(0),
+                                CurDAG->getTargetConstant(ShAmt, DL, VT),
+                                CurDAG->getTargetConstant(TrailingOnes - ShAmt, DL, VT));
+      ReplaceNode(Node, BFXI);
+      return;
+    }
+
     unsigned LShAmt = Subtarget->getXLen() - TrailingOnes;
     if (Subtarget->hasVendorXTHeadBb()) {
       SDNode *THEXTU = CurDAG->getMachineNode(
@@ -1181,6 +1362,12 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
     return;
   }
   case ISD::OR:
+    if (tryBitfieldPlaceExtract(Node))
+      return;
+    if (tryShrinkShlLogicImm(Node))
+      return;
+
+    break;
   case ISD::XOR:
     if (tryShrinkShlLogicImm(Node))
       return;
@@ -1196,6 +1383,17 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
     auto tryUnsignedBitfieldExtract = [&](SDNode *Node, SDLoc DL, MVT VT,
                                           SDValue X, unsigned Msb,
                                           unsigned Lsb) {
+      if (Subtarget->hasVendorXCramp()) {
+        if (Msb - Lsb + 1 > 1) {
+          SDNode *BFXI = CurDAG->getMachineNode(
+              RISCV::BFXI, DL, VT, X,
+              CurDAG->getTargetConstant(Lsb, DL, VT),
+              CurDAG->getTargetConstant(Msb - Lsb + 1, DL, VT));
+          ReplaceNode(Node, BFXI);
+          return true;
+        }
+      }
+
       if (!Subtarget->hasVendorXTHeadBb())
         return false;
 
@@ -1208,9 +1406,25 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
 
     bool LeftShift = N0.getOpcode() == ISD::SHL;
     if (LeftShift || N0.getOpcode() == ISD::SRL) {
+      SDValue X = N0.getOperand(0);
+      uint64_t C1 = N1C->getZExtValue();
+      const bool isC1Mask = isMask_64(C1);
+
       auto *C = dyn_cast<ConstantSDNode>(N0.getOperand(1));
-      if (!C)
+      if (!C) {
+        if (!LeftShift && isC1Mask && Subtarget->hasVendorXCramp()) {
+          SDValue Y = N0.getOperand(1);
+          unsigned MaskLen = llvm::bit_width(C1);
+
+          // Turn (and (srl x, y), c1) -> (bfx x, y, MaskLen) if c1 is a mask
+          SDNode *BFX = CurDAG->getMachineNode(
+              RISCV::BFX, DL, VT, X, Y,
+              CurDAG->getTargetConstant(MaskLen, DL, VT));
+          ReplaceNode(Node, BFX);
+          return;
+        }
         break;
+      }
       unsigned C2 = C->getZExtValue();
       unsigned XLen = Subtarget->getXLen();
       assert((C2 > 0 && C2 < XLen) && "Unexpected shift amount!");
@@ -1223,8 +1437,6 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
       // TODO: What if ANDI faster than shift?
       bool IsCANDI = isInt<6>(N1C->getSExtValue());
 
-      uint64_t C1 = N1C->getZExtValue();
-
       // Clear irrelevant bits in the mask.
       if (LeftShift)
         C1 &= maskTrailingZeros<uint64_t>(C2);
@@ -1234,8 +1446,6 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
       // Some transforms should only be done if the shift has a single use or
       // the AND would become (srli (slli X, 32), 32)
       bool OneUseOrZExtW = N0.hasOneUse() || C1 == UINT64_C(0xFFFFFFFF);
-
-      SDValue X = N0.getOperand(0);
 
       // Turn (and (srl x, c2) c1) -> (srli (slli x, c3-c2), c3) if c1 is a mask
       // with c3 leading zeros.
@@ -1318,6 +1528,22 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
 
           // (srli (slli c2+c3), c3)
           if (OneUseOrZExtW && !IsCANDI) {
+            if (Subtarget->hasVendorXCramp()) {
+              unsigned Len = XLen - (C2 + Leading);
+              if (Len == 8 || (1 <= Len && Len <= 6)) {
+                SDVTList VTs = CurDAG->getVTList(VT);
+                SDValue Ops[] = {
+                  X,
+                  CurDAG->getRegister(RISCV::X0, VT),
+                  CurDAG->getTargetConstant(C2, DL, VT),
+                  CurDAG->getTargetConstant(Len, DL, VT)
+                };
+                SDNode *BFPI = CurDAG->getMachineNode(RISCV::BFPI, DL, VTs, Ops);
+                ReplaceNode(Node, BFPI);
+                return;
+              }
+            }
+
             SDNode *SLLI = CurDAG->getMachineNode(
                 RISCV::SLLI, DL, VT, X,
                 CurDAG->getTargetConstant(C2 + Leading, DL, VT));
@@ -1482,8 +1708,10 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
     //        -> (<bfextract> x, msb, lsb)
     if (isMask_64(C1) && !isInt<12>(N1C->getSExtValue())) {
       const unsigned Msb = llvm::bit_width(C1) - 1;
-      if (tryUnsignedBitfieldExtract(Node, DL, VT, N0, Msb, 0))
-        return;
+      if (Msb != 15) {
+        if (tryUnsignedBitfieldExtract(Node, DL, VT, N0, Msb, 0))
+          return;
+      }
     }
 
     if (tryShrinkShlLogicImm(Node))

@@ -79,6 +79,7 @@ public:
 
   bool SelectAddrRegReg(SDValue Addr, SDValue &Base, SDValue &Offset);
 
+  bool tryBitfieldPlaceExtract(SDNode *Node);
   bool tryShrinkShlLogicImm(SDNode *Node);
   bool trySignedBitfieldExtract(SDNode *Node);
   bool tryIndexedLoad(SDNode *Node);
