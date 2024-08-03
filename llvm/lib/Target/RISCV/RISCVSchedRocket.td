@@ -263,4 +263,5 @@ defm : UnsupportedSchedZfhmin;
 defm : UnsupportedSchedSFB;
 defm : UnsupportedSchedXsfvcp;
 defm : UnsupportedSchedZvk;
+defm : UnsupportedSchedXCramp;
 }

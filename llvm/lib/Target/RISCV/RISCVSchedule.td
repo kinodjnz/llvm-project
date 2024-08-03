@@ -55,13 +55,6 @@ def WriteFDiv64     : SchedWrite;    // 64-bit floating point divide
 def WriteFSqrt16    : SchedWrite;    // 16-bit floating point sqrt
 def WriteFSqrt32    : SchedWrite;    // 32-bit floating point sqrt
 def WriteFSqrt64    : SchedWrite;    // 64-bit floating point sqrt
-def WriteCMov       : SchedWrite;    // cmov
-def WriteFSReg      : SchedWrite;    // fsl, fsr
-def WriteFSRImm     : SchedWrite;    // fsri
-def WriteBscthReg   : SchedWrite;    // bsct.h
-def WriteBFReg      : SchedWrite;    // bfmp, bfpp
-def WriteBFImm      : SchedWrite;    // bfmi, bfpi
-def WriteBFRLen     : SchedWrite;    // bfm, bfp
 
 // Integer to float conversions
 def WriteFCvtI32ToF16  : SchedWrite;
@@ -217,13 +210,6 @@ def ReadFRoundF64        : SchedRead;
 def ReadFClass16         : SchedRead;
 def ReadFClass32         : SchedRead;
 def ReadFClass64         : SchedRead;
-def ReadCMov             : SchedRead; // cmov
-def ReadFSReg            : SchedRead; // fsl, fsr
-def ReadFSRImm           : SchedRead; // fsri
-def ReadBscthReg         : SchedRead; // bsct.h
-def ReadBFReg            : SchedRead; // bfmp, bfpp
-def ReadBFImm            : SchedRead; // bfmi, bfpi
-def ReadBFRLen           : SchedRead; // bfm, bfp
 
 // For CPUs that support Zfhmin, but not Zfh.
 multiclass UnsupportedSchedZfh {
@@ -241,13 +227,6 @@ def : WriteRes<WriteFMinMax16, []>;
 def : WriteRes<WriteFMul16, []>;
 def : WriteRes<WriteFSGNJ16, []>;
 def : WriteRes<WriteFSqrt16, []>;
-def : WriteRes<WriteCMov, []>;
-def : WriteRes<WriteFSReg, []>;
-def : WriteRes<WriteFSRImm, []>;
-def : WriteRes<WriteBscthReg, []>;
-def : WriteRes<WriteBFReg, []>;
-def : WriteRes<WriteBFImm, []>;
-def : WriteRes<WriteBFRLen, []>;
 
 def : ReadAdvance<ReadFAdd16, 0>;
 def : ReadAdvance<ReadFClass16, 0>;
@@ -263,13 +242,6 @@ def : ReadAdvance<ReadFMinMax16, 0>;
 def : ReadAdvance<ReadFMul16, 0>;
 def : ReadAdvance<ReadFSGNJ16, 0>;
 def : ReadAdvance<ReadFSqrt16, 0>;
-def : ReadAdvance<ReadCMov, 0>;
-def : ReadAdvance<ReadFSReg, 0>;
-def : ReadAdvance<ReadFSRImm, 0>;
-def : ReadAdvance<ReadBscthReg, 0>;
-def : ReadAdvance<ReadBFReg, 0>;
-def : ReadAdvance<ReadBFImm, 0>;
-def : ReadAdvance<ReadBFRLen, 0>;
 } // Unsupported = true
 }
 
@@ -440,3 +412,4 @@ include "RISCVScheduleZb.td"
 include "RISCVScheduleV.td"
 include "RISCVScheduleXSf.td"
 include "RISCVScheduleZvk.td"
+include "RISCVScheduleXCramp.td"

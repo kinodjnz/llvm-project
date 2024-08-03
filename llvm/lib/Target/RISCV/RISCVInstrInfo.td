@@ -314,12 +314,12 @@ def uimmlog2xlen : RISCVOp, ImmLeaf<XLenVT, [{
 //   }];
 // }
 
-// def InsnDirectiveOpcode : AsmOperandClass {
-//   let Name = "InsnDirectiveOpcode";
-//   let ParserMethod = "parseInsnDirectiveOpcode";
-//   let RenderMethod = "addImmOperands";
-//   let PredicateMethod = "isImm";
-// }
+def InsnDirectiveOpcode : AsmOperandClass {
+  let Name = "InsnDirectiveOpcode";
+  let ParserMethod = "parseInsnDirectiveOpcode";
+  let RenderMethod = "addImmOperands";
+  let PredicateMethod = "isImm";
+}
 
 // // def uimm1 : RISCVUImmLeafOp<1>;
 // // def uimm2 : RISCVUImmLeafOp<2> {
@@ -2208,10 +2208,10 @@ def as_i64imm : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(N->getSExtValue(), SDLoc(N), MVT::i64);
 }]>;
 
-def zext_is_sext : PatFrag<(ops node:$src), (zext node:$src), [{
-  KnownBits Known = CurDAG->computeKnownBits(N->getOperand(0), 0);
-  return Known.isNonNegative();
-}]>;
+// def zext_is_sext : PatFrag<(ops node:$src), (zext node:$src), [{
+//   KnownBits Known = CurDAG->computeKnownBits(N->getOperand(0), 0);
+//   return Known.isNonNegative();
+// }]>;
 
 let Predicates = [IsRV64] in {
 def : LdPat<sextloadi8, LB, i32>;
@@ -2224,9 +2224,9 @@ def : LdPat<zextloadi16, LHU, i32>;
 def : StPat<truncstorei8, SB, GPR, i32>;
 def : StPat<truncstorei16, SH, GPR, i32>;
 
-def : Pat<(anyext GPR:$src), (COPY GPR:$src)>;
-def : Pat<(sext GPR:$src), (ADDIW GPR:$src, 0)>;
-def : Pat<(trunc GPR:$src), (COPY GPR:$src)>;
+// def : Pat<(anyext GPR:$src), (COPY GPR:$src)>;
+// def : Pat<(sext GPR:$src), (ADDIW GPR:$src, 0)>;
+// def : Pat<(trunc GPR:$src), (COPY GPR:$src)>;
 
 def : PatGprGpr<add, ADDW, i32, i32>;
 def : PatGprGpr<sub, SUBW, i32, i32>;
@@ -2254,18 +2254,18 @@ def : Pat<(i32 (and GPR:$rs, TrailingOnesMask:$mask)),
           (SRLI (i32 (SLLI $rs, (i64 (XLenSubTrailingOnes $mask)))),
                 (i64 (XLenSubTrailingOnes $mask)))>;
 
-// Use sext if the sign bit of the input is 0.
-def : Pat<(zext_is_sext GPR:$src), (ADDIW GPR:$src, 0)>;
+// // Use sext if the sign bit of the input is 0.
+// def : Pat<(zext_is_sext GPR:$src), (ADDIW GPR:$src, 0)>;
 }
 
-let Predicates = [IsRV64, NotHasStdExtZba] in {
-def : Pat<(zext GPR:$src), (SRLI (i64 (SLLI GPR:$src, 32)), 32)>;
+// let Predicates = [IsRV64, NotHasStdExtZba] in {
+// def : Pat<(zext GPR:$src), (SRLI (i64 (SLLI GPR:$src, 32)), 32)>;
 
 // If we're shifting a 32-bit zero extended value left by 0-31 bits, use 2
 // shifts instead of 3. This can occur when unsigned is used to index an array.
-def : Pat<(shl (zext GPR:$rs), uimm5:$shamt),
-          (SRLI (i64 (SLLI GPR:$rs, 32)), (ImmSubFrom32 uimm5:$shamt))>;
-}
+// def : Pat<(shl (zext GPR:$rs), uimm5:$shamt),
+//           (SRLI (i64 (SLLI GPR:$rs, 32)), (ImmSubFrom32 uimm5:$shamt))>;
+// }
 
 //===----------------------------------------------------------------------===//
 // Standard extensions

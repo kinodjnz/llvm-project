@@ -595,3 +595,16 @@ def RP2350_HAZARD3 : RISCVProcessorModel<"rp2350-hazard3",
                                           FeatureStdExtZbkb,
                                           FeatureStdExtZcb,
                                           FeatureStdExtZcmp]>;
+
+def CRAMP32 : RISCVProcessorModel<"cramp32", CrampModel,
+                                      [Feature32Bit,
+                                       FeatureStdExtI,
+                                       FeatureStdExtZifencei,
+                                       FeatureStdExtM,
+                                       FeatureStdExtC,
+                                       FeatureStdExtZicsr,
+                                       FeatureStdExtZba,
+                                       FeatureStdExtZbb,
+                                       FeatureStdExtZbs,
+                                       FeatureVendorXCramp],
+                                      [TunePostRAScheduler]>;
