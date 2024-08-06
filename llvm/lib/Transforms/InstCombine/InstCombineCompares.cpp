@@ -634,42 +634,43 @@ static Instruction *transformToIndexedCompare(GEPOperator *GEPLHS, Value *RHS,
                                               CmpPredicate Cond,
                                               const DataLayout &DL,
                                               InstCombiner &IC) {
-  // FIXME: Support vector of pointers.
-  if (GEPLHS->getType()->isVectorTy())
-    return nullptr;
+  return nullptr;
+  // // FIXME: Support vector of pointers.
+  // if (GEPLHS->getType()->isVectorTy())
+  //   return nullptr;
 
-  if (!GEPLHS->hasAllConstantIndices())
-    return nullptr;
+  // if (!GEPLHS->hasAllConstantIndices())
+  //   return nullptr;
 
-  APInt Offset(DL.getIndexTypeSizeInBits(GEPLHS->getType()), 0);
-  Value *PtrBase =
-      GEPLHS->stripAndAccumulateConstantOffsets(DL, Offset,
-                                                /*AllowNonInbounds*/ false);
+  // APInt Offset(DL.getIndexTypeSizeInBits(GEPLHS->getType()), 0);
+  // Value *PtrBase =
+  //     GEPLHS->stripAndAccumulateConstantOffsets(DL, Offset,
+  //                                               /*AllowNonInbounds*/ false);
 
-  // Bail if we looked through addrspacecast.
-  if (PtrBase->getType() != GEPLHS->getType())
-    return nullptr;
+  // // Bail if we looked through addrspacecast.
+  // if (PtrBase->getType() != GEPLHS->getType())
+  //   return nullptr;
 
-  // The set of nodes that will take part in this transformation.
-  SetVector<Value *> Nodes;
-  GEPNoWrapFlags NW = GEPLHS->getNoWrapFlags();
-  if (!canRewriteGEPAsOffset(RHS, PtrBase, NW, DL, Nodes))
-    return nullptr;
+  // // The set of nodes that will take part in this transformation.
+  // SetVector<Value *> Nodes;
+  // GEPNoWrapFlags NW = GEPLHS->getNoWrapFlags();
+  // if (!canRewriteGEPAsOffset(RHS, PtrBase, NW, DL, Nodes))
+  //   return nullptr;
 
-  // We know we can re-write this as
-  //  ((gep Ptr, OFFSET1) cmp (gep Ptr, OFFSET2)
-  // Since we've only looked through inbouds GEPs we know that we
-  // can't have overflow on either side. We can therefore re-write
-  // this as:
-  //   OFFSET1 cmp OFFSET2
-  Value *NewRHS = rewriteGEPAsOffset(RHS, PtrBase, NW, DL, Nodes, IC);
+  // // We know we can re-write this as
+  // //  ((gep Ptr, OFFSET1) cmp (gep Ptr, OFFSET2)
+  // // Since we've only looked through inbouds GEPs we know that we
+  // // can't have overflow on either side. We can therefore re-write
+  // // this as:
+  // //   OFFSET1 cmp OFFSET2
+  // Value *NewRHS = rewriteGEPAsOffset(RHS, PtrBase, NW, DL, Nodes, IC);
 
-  // RewriteGEPAsOffset has replaced RHS and all of its uses with a re-written
-  // GEP having PtrBase as the pointer base, and has returned in NewRHS the
-  // offset. Since Index is the offset of LHS to the base pointer, we will now
-  // compare the offsets instead of comparing the pointers.
-  return new ICmpInst(ICmpInst::getSignedPredicate(Cond),
-                      IC.Builder.getInt(Offset), NewRHS);
+  // // RewriteGEPAsOffset has replaced RHS and all of its uses with a re-written
+  // // GEP having PtrBase as the pointer base, and has returned in NewRHS the
+  // // offset. Since Index is the offset of LHS to the base pointer, we will now
+  // // compare the offsets instead of comparing the pointers.
+  // return new ICmpInst(ICmpInst::getSignedPredicate(Cond),
+  //                     IC.Builder.getInt(Offset), NewRHS);
 }
 
 /// Fold comparisons between a GEP instruction and something else. At this point
