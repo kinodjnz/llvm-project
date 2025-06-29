@@ -288,9 +288,14 @@ let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp] in
 def CC_ZEXT_B  : CZcArith_r<0b11000 , "cc.zext.b">,
                  Sched<[WriteIALU, ReadIALU]>;
 
-let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp, HasStdExtZmmul] in
+let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp, HasStdExtZmmul] in {
 def CC_MUL     : CA_ALU<0b100111, 0b10, "cc.mul">,
                  Sched<[WriteIMul, ReadIMul, ReadIMul]>;
+def CC_MULH    : CA_ALU<0b100111, 0b00, "cc.mulh">,
+                 Sched<[WriteIMul, ReadIMul, ReadIMul]>;
+def CC_MULHU   : CA_ALU<0b100111, 0b01, "cc.mulhu">,
+                 Sched<[WriteIMul, ReadIMul, ReadIMul]>;
+}
 
 let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp] in {
 def CC_NOT : CZcArith_r<0b11101 , "cc.not">,
@@ -571,6 +576,16 @@ def : CompressPat<(MUL GPRC:$rs1, GPRC:$rs1, GPRC:$rs2),
 let isCompressOnly = true in
 def : CompressPat<(MUL GPRC:$rs1, GPRC:$rs2, GPRC:$rs1),
                   (CC_MUL GPRC:$rs1, GPRC:$rs2)>;
+def : CompressPat<(MULH GPRC:$rs1, GPRC:$rs1, GPRC:$rs2),
+                  (CC_MULH GPRC:$rs1, GPRC:$rs2)>;
+let isCompressOnly = true in
+def : CompressPat<(MULH GPRC:$rs1, GPRC:$rs2, GPRC:$rs1),
+                  (CC_MULH GPRC:$rs1, GPRC:$rs2)>;
+def : CompressPat<(MULHU GPRC:$rs1, GPRC:$rs1, GPRC:$rs2),
+                  (CC_MULHU GPRC:$rs1, GPRC:$rs2)>;
+let isCompressOnly = true in
+def : CompressPat<(MULHU GPRC:$rs1, GPRC:$rs2, GPRC:$rs1),
+                  (CC_MULHU GPRC:$rs1, GPRC:$rs2)>;
 } // Predicates = [HasVendorXCramp, HasStdExtZmmul]
 
 let Predicates = [HasVendorXCramp, HasStdExtZbb] in{
