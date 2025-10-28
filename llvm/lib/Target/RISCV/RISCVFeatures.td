@@ -1334,8 +1334,8 @@ def HasVendorXqcilo
                          "'Xqcilo' (Qualcomm uC Large Offset Load Store Extension)">;
 
 def FeatureVendorXCramp
-    : SubtargetFeature<"xcramp", "HasVendorXCramp", "true",
-                       "'xcramp' (Cramp Instructions)">;
+    : RISCVExperimentalExtension<0, 1, "'Xcramp' (Cramp Instructions)",
+                                 [FeatureStdExtZca, FeatureStdExtZba, FeatureStdExtZbb, FeatureStdExtZbs, FeatureStdExtZicclsm]>;
 def HasVendorXCramp : Predicate<"Subtarget->hasVendorXCramp()">,
                                 AssemblerPredicate<(all_of FeatureVendorXCramp),
                                 "'xcramp' (Cramp Instructions)">;
