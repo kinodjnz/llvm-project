@@ -480,6 +480,19 @@ def BFMP : RVBTernaryR<0b10, 0b100, OPC_CUSTOM_3, "bfmp", "$rd, $rs1, $rs3, $rs2
            Sched<[WriteBFReg, ReadBFReg, ReadBFReg, ReadBFReg]>;
 def BFPP : RVBTernaryR<0b11, 0b100, OPC_CUSTOM_3, "bfpp", "$rd, $rs1, $rs3, $rs2">,
            Sched<[WriteBFReg, ReadBFReg, ReadBFReg, ReadBFReg]>;
+
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+def SEQI : RVInstI<0b110, OPC_OP_IMM_32, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
+              "seqi", "$rd, $rs1, $imm12">,
+      Sched<[WriteIALU, ReadIALU]>;
+let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
+def SNEI : RVInstI<0b111, OPC_OP_IMM_32, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
+              "snei", "$rd, $rs1, $imm12">,
+      Sched<[WriteIALU, ReadIALU]>;
+def SEQ  : ALU_rr<0b0111000, 0b010, "seq">,
+           Sched<[WriteIALU, ReadIALU, ReadIALU]>;
+def SNE  : ALU_rr<0b0111000, 0b011, "sne">,
+           Sched<[WriteIALU, ReadIALU, ReadIALU]>;
 } // Predicates = [HasVendorXCramp]
 
 let DecoderNamespace = "Cramp", Predicates = [HasVendorXCramp] in {
@@ -539,14 +552,22 @@ def : Pat<(select (XLenVT (setne (XLenVT GPR:$rs2), 0)), (XLenVT GPR:$rs1), (XLe
           (CMOV GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
 def : Pat<(select (XLenVT (seteq (XLenVT GPR:$rs2), 0)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
           (CMOV GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
-def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), simm12_plus1:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
-          (CMOV GPR:$rs1, (ADDI GPR:$x, (NegImm simm12_plus1:$y)), GPR:$rs3)>;
-def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), simm12_plus1:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
-          (CMOV GPR:$rs1, (ADDI GPR:$x, (NegImm simm12_plus1:$y)), GPR:$rs3)>;
-def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
-          (CMOV GPR:$rs1, (XOR GPR:$x, GPR:$y), GPR:$rs3)>;
-def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
-          (CMOV GPR:$rs1, (XOR GPR:$x, GPR:$y), GPR:$rs3)>;
+// def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), simm12_plus1:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+//           (CMOV GPR:$rs1, (ADDI GPR:$x, (NegImm simm12_plus1:$y)), GPR:$rs3)>;
+// def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), simm12_plus1:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
+//           (CMOV GPR:$rs1, (ADDI GPR:$x, (NegImm simm12_plus1:$y)), GPR:$rs3)>;
+// def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+//           (CMOV GPR:$rs1, (XOR GPR:$x, GPR:$y), GPR:$rs3)>;
+// def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
+//           (CMOV GPR:$rs1, (XOR GPR:$x, GPR:$y), GPR:$rs3)>;
+def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), simm12:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
+          (CMOV GPR:$rs1, (SEQI GPR:$x, simm12:$y), GPR:$rs3)>;
+def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), simm12:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+          (CMOV GPR:$rs1, (SEQI GPR:$x, simm12:$y), GPR:$rs3)>;
+def : Pat<(select (XLenVT (setne (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs3), (XLenVT GPR:$rs1)),
+          (CMOV GPR:$rs1, (SEQ GPR:$x, GPR:$y), GPR:$rs3)>;
+def : Pat<(select (XLenVT (seteq (XLenVT GPR:$x), GPR:$y)), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
+          (CMOV GPR:$rs1, (SEQ GPR:$x, GPR:$y), GPR:$rs3)>;
 
 def : Pat<(select (XLenVT GPR:$rs2), (XLenVT GPR:$rs1), (XLenVT GPR:$rs3)),
           (CMOV GPR:$rs1, GPR:$rs2, GPR:$rs3)>;
@@ -568,6 +589,21 @@ def : Pat<(riscv_fsl (XLenVT GPR:$rs3), (XLenVT GPR:$rs1), uimm5:$shamt),
 let Predicates = [HasVendorXCramp] in {
 def : Pat<(and (shiftop<shl> -1, (XLenVT GPR:$rs1)), (XLenVT GPR:$rs2)),
           (BFM GPR:$rs2, (XLenVT X0), (ADDI GPR:$rs1, 1), 0)>;
+}
+
+let Predicates = [HasVendorXCramp] in {
+def : Pat<(XLenVT (seteq (XLenVT GPR:$rs1), (XLenVT 0))),
+          (SLTIU GPR:$rs1, 1)>;
+def : Pat<(XLenVT (seteq (XLenVT GPR:$rs1), (XLenVT simm12:$imm12))),
+          (SEQI GPR:$rs1, simm12:$imm12)>;
+def : Pat<(XLenVT (seteq (XLenVT GPR:$rs1), (XLenVT GPR:$rs2))),
+          (SEQ GPR:$rs1, GPR:$rs2)>;
+def : Pat<(XLenVT (setne (XLenVT GPR:$rs1), (XLenVT 0))),
+          (SLTU (XLenVT X0), GPR:$rs1)>;
+def : Pat<(XLenVT (setne (XLenVT GPR:$rs1), (XLenVT simm12:$imm12))),
+          (SNEI GPR:$rs1, simm12:$imm12)>;
+def : Pat<(XLenVT (setne (XLenVT GPR:$rs1), (XLenVT GPR:$rs2))),
+          (SNE GPR:$rs1, GPR:$rs2)>;
 }
 
 let Predicates = [HasVendorXCramp, HasStdExtZmmul] in{
